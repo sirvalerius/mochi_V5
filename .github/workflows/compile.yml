@@ -2,7 +2,7 @@ name: Compile and Deploy Firmware
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ] # Funziona su entrambi i nomi di branch comuni
 
 jobs:
   build:
@@ -14,8 +14,8 @@ jobs:
 
       - name: Install Arduino CLI
         run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          echo "$HOME/bin" >> $GITHUB_PATH
+          # Installiamo arduino-cli direttamente in /usr/local/bin così è disponibile ovunque
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sudo BINDIR=/usr/local/bin sh
 
       - name: Install ESP32 Platform
         run: |
@@ -24,22 +24,26 @@ jobs:
 
       - name: Install Libraries
         run: |
-          # Installiamo LovyanGFX (indispensabile per il display Waveshare)
+          # Queste sono le librerie che abbiamo individuato nel tuo codice
           arduino-cli lib install "LovyanGFX"
-          
-          # Installiamo Adafruit NeoPixel (per il LED di stato RGB)
           arduino-cli lib install "Adafruit NeoPixel"
 
       - name: Compile Firmware
         run: |
-          # Sostituisci 'src' con la cartella del tuo sketch se diversa
-          # Usiamo il FQBN per ESP32-S3 (Waveshare spesso usa il dev kit generico o specifico)
-          arduino-cli compile --fqbn esp32:esp32:esp32s3 --build-property "build.usb_mode=1" --output-dir ./bin ./src/Mochi_mouse_v5/Mochi_mouse_v5.ino
+          # Creiamo la cartella bin se non esiste
+          mkdir -p ./bin
+          # Compilazione specifica per ESP32-S3 con supporto USB HID
+          arduino-cli compile --fqbn esp32:esp32:esp32s3 \
+            --build-property "build.usb_mode=1" \
+            --build-property "build.usb_cdc_on_boot=1" \
+            --output-dir ./bin \
+            ./src/Mochi_mouse_v5/Mochi_mouse_v5.ino
 
       - name: Commit and Push Firmware
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
+          # Aggiungiamo i file binari generati (inclusi i file .merged.bin)
           git add bin/*.bin
-          git commit -m "Auto-generated firmware binary" || exit 0
+          git commit -m "Auto-generated firmware binary" || echo "No changes to commit"
           git push
