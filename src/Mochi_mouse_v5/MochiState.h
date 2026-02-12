@@ -22,6 +22,11 @@ public:
   bool isDying = false;
   bool isHeartVisible = false;
   unsigned long heartShowTime = 0;
+
+  bool isBubbleVisible = false;
+  char bubbleType = '!'; // '!' o '?'
+  unsigned long bubbleShowTime = 0;
+
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;
 
@@ -112,6 +117,19 @@ public:
     if (isHeartVisible && (millis() - heartShowTime > 2500)) {
       isHeartVisible = false;
     }
+  }
+
+  void triggerBubble(char type) {
+    isBubbleVisible = true;
+    bubbleType = type;
+    bubbleShowTime = millis();
+  }
+
+  // Nel metodo updateDecay() o simile, aggiungi il check per lo spegnimento
+  void updateBubbles() {
+      if (isBubbleVisible && (millis() - bubbleShowTime > 2500)) {
+          isBubbleVisible = false;
+      }
   }
 
   float getProgress() {
