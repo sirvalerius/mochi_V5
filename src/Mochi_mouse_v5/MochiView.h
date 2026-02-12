@@ -78,7 +78,7 @@ public:
         color = K_ELDER_BODY;
       }
       // Usa la nuova funzione adattiva
-      drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible);
+      drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
     }
     canvas->pushSprite(0, 0);
   }
@@ -113,7 +113,7 @@ public:
 
     // Durante la transizione usiamo lo stadio di arrivo per i dettagli, 
     // ma la funzione adattiva gestirà le dimensioni intermedie.
-    drawAdaptiveMochi(cx + jitter, cy, current_w, current_h, current_color, to, false, false);
+    drawAdaptiveMochi(cx + jitter, cy, current_w, current_h, current_color, to, false, false, false, '.');
 
     // Effetto "luce" o "fumo" intorno
     if (t > 0.2 && t < 0.8) {
@@ -200,7 +200,7 @@ private:
     }
   }
 
-  void drawAdaptiveMochi(int cx, int cy, int w, int h, uint16_t bodyColor, AgeStage stage, bool wink, bool heart) {
+  void drawAdaptiveMochi(int cx, int cy, int w, int h, uint16_t bodyColor, AgeStage stage, bool wink, bool heart, bool bubble, char bType) {
     
     // 1. Disegna Corpo
     // Raggio angoli: proporzionato all'altezza, ma più tondeggiante per il baby
@@ -261,31 +261,30 @@ private:
       canvas->fillCircle(hx+3, hy, 4, K_HEART);
       canvas->fillTriangle(hx-7, hy, hx+7, hy, hx, hy+7, K_HEART);
     }
+
+    if (bubble) {
+        drawBubble(cx, cy, w, h, bType);
+    }
   }
 
-  // --- IL VECCHIO DISEGNO SPOSTATO QUI ---
-  void drawNormalMochi(int yOff, bool wink, bool heart) {
-    int cx = 160;
-    int cy = 86 + yOff;
-    // Corpo Mochi
-    canvas->fillRoundRect(cx - 50, cy - 40, 100, 80, 35, K_WHITE);
-    canvas->fillCircle(cx - 35, cy + 5, 8, K_BLUSH);
-    canvas->fillCircle(cx + 35, cy + 5, 8, K_BLUSH);
-    // Occhi dinamici
-    if (wink) {
-      canvas->fillRoundRect(cx - 38, cy - 10, 20, 4, 2, K_EYE);
-      canvas->fillCircle(cx + 25, cy - 10, 5, K_EYE);
-    } else {
-      canvas->fillCircle(cx - 25, cy - 10, 5, K_EYE);
-      canvas->fillCircle(cx + 25, cy - 10, 5, K_EYE);
-    }
-    // Cuore
-    if (heart) {
-      int hx = cx + 45, hy = cy - 50;
-      canvas->fillCircle(hx-3, hy, 4, K_HEART); 
-      canvas->fillCircle(hx+3, hy, 4, K_HEART);
-      canvas->fillTriangle(hx-7, hy, hx+7, hy, hx, hy+7, K_HEART);
-    }
+  void drawBubble(int cx, int cy, int w, int h, char type) {
+    int bx = cx - (w / 2) - 10; // Lato sinistro
+    int by = cy - (h / 2) - 15;
+    
+    // Disegno ellisse fumetto
+    canvas->fillEllipse(bx, by, 12, 10, K_WHITE);
+    canvas->drawEllipse(bx, by, 12, 10, K_EYE);
+    
+    // Codina del fumetto
+    canvas->fillTriangle(bx, by + 8, bx + 5, by + 12, bx + 10, by + 8, K_WHITE);
+    canvas->drawLine(bx, by + 8, bx + 5, by + 12, K_EYE);
+    canvas->drawLine(bx + 10, by + 8, bx + 5, by + 12, K_EYE);
+
+    // Testo (Punto esclamativo o interrogativo)
+    canvas->setTextColor(K_EYE);
+    canvas->setTextSize(1);
+    canvas->setCursor(bx - 3, by - 4);
+    canvas->print(type);
   }
 };
 #endif
