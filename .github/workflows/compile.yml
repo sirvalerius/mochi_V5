@@ -24,9 +24,11 @@ jobs:
 
       - name: Install Libraries
         run: |
-          # Aggiungi qui le librerie necessarie per il tuo Mochi
-          # arduino-cli lib install "Adafruit GFX Library"
-          # arduino-cli lib install "Adafruit ST7789 Library"
+          # Installiamo LovyanGFX (indispensabile per il display Waveshare)
+          arduino-cli lib install "LovyanGFX"
+          
+          # Installiamo Adafruit NeoPixel (per il LED di stato RGB)
+          arduino-cli lib install "Adafruit NeoPixel"
 
       - name: Compile Firmware
         run: |
