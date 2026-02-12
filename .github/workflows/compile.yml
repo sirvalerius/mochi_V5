@@ -2,48 +2,64 @@ name: Compile and Deploy Firmware
 
 on:
   push:
-    branches: [ main, master ] # Funziona su entrambi i nomi di branch comuni
+    branches: [ main, master ]
+    # Richiesta 2: Il job parte SOLO se ci sono modifiche in questa cartella
+    paths:
+      - 'src/**'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Necessario per fare il push delle modifiche
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Install Arduino CLI
         run: |
-          # Installiamo arduino-cli direttamente in /usr/local/bin così è disponibile ovunque
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sudo BINDIR=/usr/local/bin sh
 
-      - name: Install ESP32 Platform
+      - name: Install ESP32 Platform and Libraries
         run: |
           arduino-cli core update-index --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           arduino-cli core install esp32:esp32 --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-
-      - name: Install Libraries
-        run: |
-          # Queste sono le librerie che abbiamo individuato nel tuo codice
           arduino-cli lib install "LovyanGFX"
           arduino-cli lib install "Adafruit NeoPixel"
 
-      - name: Compile Firmware
+      - name: Set Version Number
+        # Richiesta 1: Generiamo un numero di versione basato sul run di GitHub
         run: |
-          # Creiamo la cartella bin se non esiste
+          VERSION="1.1.${{ github.run_number }}"
+          echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Versione generata: $VERSION"
+
+      - name: Update manifest.json
+        # Aggiorna automaticamente la versione nel file manifest.json
+        run: |
+          sed -i "s/\"version\": \".*\"/\"version\": \"${{ env.NEW_VERSION }}\"/" manifest.json
+
+      - name: Compile Firmware
+        # Passiamo la versione anche al codice C++ come macro (opzionale ma utile)
+        run: |
           mkdir -p ./bin
-          # Compilazione specifica per ESP32-S3 con supporto USB HID
           arduino-cli compile --fqbn esp32:esp32:esp32s3 \
             --build-property "build.usb_mode=1" \
-            --build-property "build.usb_cdc_on_boot=1" \
+            --build-property "compiler.cpp.extra_flags=-DMOCHI_VERSION=\"${{ env.NEW_VERSION }}\"" \
             --output-dir ./bin \
             ./src/Mochi_mouse_v5/Mochi_mouse_v5.ino
 
-      - name: Commit and Push Firmware
+      - name: Prepare Binary for Web
+        # Rinominiamo il file per matchare quello che cerca il manifest
+        run: mv bin/Mochi_mouse_v5.ino.merged.bin bin/firmware_merged.bin
+
+      - name: Commit and Push changes
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          # Aggiungiamo i file binari generati (inclusi i file .merged.bin)
-          git add bin/*.bin
-          git commit -m "Auto-generated firmware binary" || echo "No changes to commit"
+          git add bin/firmware_merged.bin manifest.json
+          git commit -m "Build v${{ env.NEW_VERSION }} [skip ci]" || echo "No changes to commit"
           git push
