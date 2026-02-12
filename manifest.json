@@ -1,10 +1,10 @@
 {
   "name": "Mochi Mouse",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "new_install_prompt_erase": true,
   "builds": [
     {
-      "chipFamily": "ESP32",
+      "chipFamily": "ESP32-S3",
       "parts": [
         { "path": "bin/firmware_merged.bin", "offset": 0 }
       ]
