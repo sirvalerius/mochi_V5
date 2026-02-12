@@ -78,6 +78,7 @@ public:
 
     if (cmd == "FEED") hunger += 20.0; 
     else if (cmd == "PLAY") happy += 20.0;
+    else if (cmd == "GROW") growUp();
     else if (cmd == "KILL") {
       isDying = true;
       return;

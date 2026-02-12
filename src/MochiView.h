@@ -143,65 +143,120 @@ private:
   }
 
   // Helper per le rughe (Anziano)
-  void drawWrinkles(int cx, int eyeY) {
-    int ex = 35; // eye x offset
-    // Rughe sotto gli occhi
-    canvas->drawArc(cx - ex, eyeY + 10, 12, 14, 220, 320, K_WRINKLE);
-    canvas->drawArc(cx + ex, eyeY + 10, 12, 14, 220, 320, K_WRINKLE);
-    // Rughe zampe di gallina
-    canvas->drawLine(cx - ex - 10, eyeY, cx - ex - 18, eyeY - 5, K_WRINKLE);
-    canvas->drawLine(cx - ex - 10, eyeY + 2, cx - ex - 18, eyeY + 7, K_WRINKLE);
-    canvas->drawLine(cx + ex + 10, eyeY, cx + ex + 18, eyeY - 5, K_WRINKLE);
-    canvas->drawLine(cx + ex + 10, eyeY + 2, cx + ex + 18, eyeY + 7, K_WRINKLE);
+  void drawWrinkles(int cx, int eyeY, int spacingX) {
+    // Le rughe devono seguire la posizione degli occhi
+    int offset = spacingX + 10; 
+    
+    // Sotto gli occhi
+    canvas->drawArc(cx - spacingX, eyeY + 10, 10, 12, 220, 320, K_WRINKLE);
+    canvas->drawArc(cx + spacingX, eyeY + 10, 10, 12, 220, 320, K_WRINKLE);
+    
+    // Zampe di gallina
+    canvas->drawLine(cx - offset, eyeY, cx - offset - 6, eyeY - 3, K_WRINKLE);
+    canvas->drawLine(cx - offset, eyeY + 2, cx - offset - 6, eyeY + 5, K_WRINKLE);
+
+    canvas->drawLine(cx + offset, eyeY, cx + offset + 6, eyeY - 3, K_WRINKLE);
+    canvas->drawLine(cx + offset, eyeY + 2, cx + offset + 6, eyeY + 5, K_WRINKLE);
   }
 
   // Helper per gli occhi
-  void drawEyes(int cx, int cy, bool wink, float scale) {
-    int offset = 25 * scale;
-    int radius = 5 * scale;
-    if (wink) {
-      canvas->fillRoundRect(cx - offset - (10*scale), cy, 20*scale, 4*scale, 2*scale, K_EYE);
-      canvas->fillCircle(cx + offset, cy, radius, K_EYE);
-    } else {
-      canvas->fillCircle(cx - offset, cy, radius, K_EYE);
-      canvas->fillCircle(cx + offset, cy, radius, K_EYE);
+  void drawEyes(int cx, int cy, int spacingX, int yOffset, int rX, int rY, bool wink, AgeStage stage) {
+    
+    // Posizione occhi
+    int leftEyeX = cx - spacingX;
+    int rightEyeX = cx + spacingX;
+    int eyeY = cy + yOffset;
+
+    // --- STILE BABY (Ovali + Riflesso) ---
+    if (stage == BABY) {
+      // Occhio Sinistro
+      if (wink) {
+        // Arco felice
+        canvas->drawArc(leftEyeX, eyeY + (rY/3), rX, rY/3, 180, 360, K_EYE);
+        canvas->drawArc(leftEyeX, eyeY + (rY/3) + 1, rX, rY/3, 180, 360, K_EYE);
+      } else {
+        canvas->fillEllipse(leftEyeX, eyeY, rX, rY, K_EYE);
+        // Riflesso proporzionato (20% della larghezza occhio)
+        int reflectSize = max(2, (int)(rX * 0.4)); 
+        canvas->fillCircle(leftEyeX - (rX/2), eyeY - (rY/2), reflectSize, K_WHITE);
+      }
+
+      // Occhio Destro
+      canvas->fillEllipse(rightEyeX, eyeY, rX, rY, K_EYE);
+      int reflectSize = max(2, (int)(rX * 0.4));
+      canvas->fillCircle(rightEyeX - (rX/2), eyeY - (rY/2), reflectSize, K_WHITE);
+    } 
+    
+    // --- STILE ADULTO / ANZIANO (Tondi) ---
+    else {
+      // Occhio SX
+      if (wink) {
+        canvas->fillRoundRect(leftEyeX - rX, eyeY, rX*2, max(2, rY/2), 2, K_EYE);
+      } else {
+        canvas->fillCircle(leftEyeX, eyeY, rX, K_EYE); // rX usato come raggio
+      }
+      // Occhio DX
+      canvas->fillCircle(rightEyeX, eyeY, rX, K_EYE);
     }
   }
 
   void drawAdaptiveMochi(int cx, int cy, int w, int h, uint16_t bodyColor, AgeStage stage, bool wink, bool heart) {
     
-    // Corpo Adattivo
-    // Usiamo h/2 come raggio per arrotondare, ma limitiamolo per il baby
-    int radius = h / 2; 
-    if (stage == BABY && radius > 25) radius = 25; 
-    if (stage != BABY && radius > 35) radius = 35;
-
+    // 1. Disegna Corpo
+    // Raggio angoli: proporzionato all'altezza, ma più tondeggiante per il baby
+    int radius = (stage == BABY) ? (h * 0.45) : (h * 0.40); 
     canvas->fillRoundRect(cx - (w/2), cy - (h/2), w, h, radius, bodyColor);
 
-    // Dettagli in base all'età
+    // 2. Calcola proporzioni per gli elementi facciali
+    int spacingX, yOffset, eyeRx, eyeRy;
+
     if (stage == BABY) {
-       // Baby: Occhi più grandi in proporzione, blush più piccolo, niente rughe
-       canvas->fillCircle(cx - (w*0.35), cy + 2, 6, K_BLUSH);
-       canvas->fillCircle(cx + (w*0.35), cy + 2, 6, K_BLUSH);
-       drawEyes(cx, cy - 5, wink, 1.2); // Occhi 20% più grandi
-    } 
-    else if (stage == ADULT) {
-       // Adulto standard
-       canvas->fillCircle(cx - 35, cy + 5, 8, K_BLUSH);
-       canvas->fillCircle(cx + 35, cy + 5, 8, K_BLUSH);
-       drawEyes(cx, cy - 10, wink, 1.0);
-    }
-    else if (stage == ELDER) {
-       // Anziano: Blush più basso, rughe
-       canvas->fillCircle(cx - 35, cy + 15, 8, K_BLUSH);
-       canvas->fillCircle(cx + 35, cy + 15, 8, K_BLUSH);
-       drawEyes(cx, cy - 10, wink, 1.0);
-       drawWrinkles(cx, cy - 10);
+       // --- PROPORZIONI BABY ---
+       // Occhi più distanti in proporzione alla testa piccola (kawaii ratio)
+       spacingX = w * 0.28;  
+       // Occhi posizionati leggermente sotto il centro (fronte alta)
+       yOffset = h * 0.05;   
+       // Occhi GRANDI (ovali)
+       eyeRx = w * 0.11;     
+       eyeRy = h * 0.18;    
+       
+       // Guance
+       int cheekSpace = w * 0.38;
+       int cheekY = yOffset + (h * 0.15);
+       canvas->fillCircle(cx - cheekSpace, cy + cheekY, 4, K_BLUSH);
+       canvas->fillCircle(cx + cheekSpace, cy + cheekY, 4, K_BLUSH);
+
+    } else {
+       // --- PROPORZIONI ADULTO/ANZIANO ---
+       // Occhi standard
+       spacingX = w * 0.25;
+       // Occhi sopra il centro
+       yOffset = -(h * 0.12);
+       // Occhi più piccoli
+       eyeRx = w * 0.05; // Raggio cerchio
+       eyeRy = eyeRx;    // Non usato per tondi ma passato per coerenza
+       
+       // Guance
+       int cheekSpace = w * 0.35;
+       int cheekY = yOffset + (h * 0.20); // Sotto gli occhi
+       if (stage == ELDER) cheekY += 5;   // Anziano ha guance più basse
+
+       canvas->fillCircle(cx - cheekSpace, cy + cheekY, (stage==ELDER?6:8), K_BLUSH);
+       canvas->fillCircle(cx + cheekSpace, cy + cheekY, (stage==ELDER?6:8), K_BLUSH);
     }
 
-    // Cuore (Standard)
+    // 3. Disegna Occhi (passando i valori calcolati)
+    drawEyes(cx, cy, spacingX, yOffset, eyeRx, eyeRy, wink, stage);
+
+    // 4. Rughe (Solo Anziano) - Calcolate relative agli occhi
+    if (stage == ELDER) {
+       drawWrinkles(cx, cy + yOffset, spacingX);
+    }
+
+    // 5. Cuore (Sempre sopra la testa)
     if (heart) {
-      int hx = cx + (w/2) - 5, hy = cy - (h/2) - 10;
+      int hx = cx + (w/2) - 5;
+      int hy = cy - (h/2) - 10;
       canvas->fillCircle(hx-3, hy, 4, K_HEART); 
       canvas->fillCircle(hx+3, hy, 4, K_HEART);
       canvas->fillTriangle(hx-7, hy, hx+7, hy, hx, hy+7, K_HEART);

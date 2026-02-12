@@ -128,6 +128,12 @@ void loop() {
     // Dopo l'animazione, il flag è false e mochi è resettato.
     // Ritorniamo all'inizio del loop per ricominciare "puliti"
     return; 
+  }
+
+  // --- CONTROLLO MORTE ---
+  if (mochi.needsGrowthAnimation) {
+    performGrowthSequence();
+    return;
   } 
 
   // 2. Aggiorna Logica
