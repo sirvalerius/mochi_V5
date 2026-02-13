@@ -41,6 +41,12 @@ private:
     <button class="btn btn-feed" onclick="sendCmd('FEED')">Nutri</button>
     <button class="btn btn-play" onclick="sendCmd('PLAY')">Gioca</button>
     <button class="btn btn-kill" onclick="sendCmd('KILL')">RESET</button>
+
+    <h3>Presentazione</h3>
+    <div class="pres-container">
+      <button class="btn slide-btn" onclick="sendCmd('prev')">◀ Indietro</button>
+      <button class="btn slide-btn" onclick="sendCmd('next')">Avanti ▶</button>
+    </div>
   </div>
   <script>
     function sendCmd(action) {
