@@ -17,6 +17,16 @@ MochiState mochi;
 MochiView* view;
 MochiServer* webServer; // Puntatore al server
 
+void avantiPresentazione() {
+  // Simula il tasto "Avanti" del mouse (Mouse 5)
+  Mouse.click(MOUSE_FORWARD); 
+}
+
+void indietroPresentazione() {
+  // Simula il tasto "Indietro" del mouse (Mouse 4)
+  Mouse.click(MOUSE_BACK);
+}
+
 void setup() {
   Serial.begin(115200);
   USB.begin();
@@ -144,6 +154,8 @@ void loop() {
      // Se riceve un comando WiFi, forza l'attivazione immediata
      mochi.isHeartVisible = true;
      mochi.heartShowTime = millis();
+     if (mochi.lastCommand = "prev") indietroPresentazione();
+     else if (mochi.lastCommand = "next") avantiPresentazione();
      mochi.lastCommand = ""; // Reset del comando dopo averlo processato
   } else {
      // Altrimenti, usa la logica casuale standard

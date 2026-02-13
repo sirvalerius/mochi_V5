@@ -92,7 +92,13 @@ public:
        growUp();
        return; 
     }
-    
+    else if (cmd = "prev") {
+
+    }
+    else if (cmd = "next") {
+      
+    }
+
     if (hunger > MAX_VAL) hunger = MAX_VAL;
     if (happy > MAX_VAL) happy = MAX_VAL;
 
