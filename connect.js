@@ -26,9 +26,10 @@ async function connectToMochi() {
 
         // Cerca dispositivi che iniziano con "Mochi-" (gestione colonia)
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: 'Mochi-' }],
-            optionalServices: [SERVICE_UUID]
-        });
+			// Accettiamo tutti i dispositivi per vedere se appare nella lista
+			acceptAllDevices: true, 
+			optionalServices: [SERVICE_UUID] 
+		});
 
         // Gestione disconnessione (se Mochi si spegne o esce dal raggio)
         device.addEventListener('gattserverdisconnected', onDisconnected);
