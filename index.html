@@ -44,8 +44,11 @@
             <button class="btn slide-btn" onclick="sendCmd('next')">Avanti ▶</button>
         </div>
 
-        <a href="./install" class="footer-link">⚙️ Aggiorna Firmware (Installer)</a>
+        <a href="./install" class="footer-link">
+			⚙️ Aggiorna Firmware ver. <span id="version-label">..</span>
+		</a>
     </div>
+	
 
     <script>
         // Indirizzo IP di Mochi quando sei collegato al suo Wi-Fi
@@ -62,6 +65,13 @@
                     alert("Mochi non risponde. Controlla di essere collegato alla sua rete Wi-Fi!");
                 });
         }
+		
+		fetch('manifest.json')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('version-label').innerText = `(v${data.version})`;
+        })
+        .catch(err => console.log("Impossibile caricare la versione"));
     </script>
 </body>
 </html>

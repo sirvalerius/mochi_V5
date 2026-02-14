@@ -39,6 +39,8 @@
 
     <div class="card">
         <h1>Mochi: Il tuo E-Pet IoT 🐾</h1>
+		<p class="version-text">Versione attuale: <span id="v-number">Latest</span></p>
+		
         <p>Collega il tuo ESP32 via USB e clicca qui sotto per installare o aggiornare il firmware.</p>
         
         <esp-web-install-button 
@@ -54,5 +56,27 @@
 		<a href="https://adafruit.github.io/Adafruit_WebSerial_ESPTool/">additional esp tools:</a> 
     </div>
 
+	<script>
+		// Aggiungi questo script in fondo al body
+		fetch('manifest.json')
+			.then(response => response.json())
+			.then(data => {
+				document.getElementById('v-number').innerText = data.version;
+			});
+	</script>
+
+	<style>
+		/* Un piccolo tocco di stile per la versione nell'installer */
+		.version-text {
+			font-size: 0.8em;
+			background: #eee;
+			display: inline-block;
+			padding: 4px 12px;
+			border-radius: 10px;
+			color: #666;
+			margin-top: -10px;
+			margin-bottom: 20px;
+		}
+	</style>
 </body>
 </html>
