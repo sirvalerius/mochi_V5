@@ -33,15 +33,9 @@ jobs:
       - - name: Set Version Number
         run: |
           BASE_VERSION="1.2"
-          # Sottrai il numero di run totali fatti fino alla versione 1.1
-          # Se l'ultimo run della 1.1 era il 40, scrivi 40 qui sotto:
-          OFFSET=40 
           
           # Calcolo: Numero attuale - Offset
-          PATCH=$(( ${{ github.run_number }} - OFFSET ))
-          
-          # Se per sbaglio il calcolo è <= 0, metti 1
-          if [ $PATCH -le 0 ]; then PATCH=1; fi
+          PATCH=$(( ${{ github.run_number }} ))
           
           VERSION="${BASE_VERSION}.${PATCH}"
           echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV
@@ -67,8 +61,9 @@ jobs:
 
       - name: Commit and Push changes
         run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          git add bin/firmware_merged.bin manifest.json
-          git commit -m "Build v${{ env.NEW_VERSION }} [skip ci]" || echo "No changes to commit"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -f bin/firmware_merged.bin  # <--- AGGIUNGI -f QUI
+          git add manifest.json
+          git commit -m "Automated build: ${{ env.NEW_VERSION }}" || echo "No changes to commit"
           git push
