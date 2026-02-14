@@ -22,30 +22,27 @@ fetch('manifest.json')
 // 2. Funzione Connessione BLE
 async function connectToMochi() {
     try {
-        statusText.innerHTML = `<span class="status-dot"></span> Ricerca in corso...`;
+        statusText.innerHTML = `<span class="status-dot"></span> Ricerca Mochi in corso...`;
 
-        // Cerca dispositivi che iniziano con "Mochi-" (gestione colonia)
         const device = await navigator.bluetooth.requestDevice({
-			// Accettiamo tutti i dispositivi per vedere se appare nella lista
-			acceptAllDevices: true, 
-			optionalServices: [SERVICE_UUID] 
-		});
+            // FILTRO: Mostra solo dispositivi che iniziano con "Mochi-"
+            filters: [
+                { namePrefix: 'Mochi-' }
+            ],
+            // IMPORTANTE: Dichiariamo comunque il servizio che useremo
+            optionalServices: [SERVICE_UUID]
+        });
 
-        // Gestione disconnessione (se Mochi si spegne o esce dal raggio)
         device.addEventListener('gattserverdisconnected', onDisconnected);
-
         statusText.innerHTML = `<span class="status-dot"></span> Connessione a ${device.name}...`;
 
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
         mochiCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
-        // Successo!
         onConnected(device.name);
-
     } catch (error) {
-        console.error("Errore connessione:", error);
-        // Se l'utente annulla, resetta lo stato
+        console.log("Ricerca annullata o nessun Mochi trovato.");
         statusText.innerHTML = `<span class="status-dot"></span> Disconnesso`;
     }
 }
