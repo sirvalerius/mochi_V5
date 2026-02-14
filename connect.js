@@ -73,6 +73,10 @@ function onConnected(name) {
     
     // Abilita tutti i pulsanti di comando
     cmdButtons.forEach(btn => btn.removeAttribute('disabled'));
+	
+	// Eseguiamo la sincronizzazione in modo asincrono.
+    // Usiamo un piccolo delay iniziale per permettere al GATT di stabilizzarsi
+    await new Promise(resolve => setTimeout(resolve, 1000));
 }
 
 // Helper: Aggiorna UI quando disconnesso
@@ -102,6 +106,32 @@ async function sendCmd(action) {
     } catch (error) {
         console.error("Errore invio comando:", error);
         onDisconnected(); // Se l'invio fallisce, consideriamo disconnesso
+    }
+}
+
+async function syncMochiTime() {
+    try {
+        const response = await fetch('https://worldtimeapi.org/api/ip');
+        const data = await response.json();
+        const now = new Date(data.datetime);
+        
+        // Formattiamo Giorno/Mese (es: 14/02)
+        const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '4-digit'});
+        // Formattiamo Ora (es: 15:30)
+        const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        
+        const fullStatus = `${dateStr} ${timeStr}`;
+        console.log("Sincronizzazione completa:", fullStatus);
+        
+        // Inviamo il comando "sync:14/02 15:30"
+        await sendCmd(`sync:${fullStatus}`);
+        
+    } catch (error) {
+        console.error("Errore API esterna, uso ora locale:", error);
+        const local = new Date();
+        const fallback = local.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + 
+                         " " + local.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        sendCmd(`sync:${fallback}`);
     }
 }
 
