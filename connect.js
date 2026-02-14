@@ -138,7 +138,7 @@ async function syncMochiTime() {
         const local = new Date();
         const fallback = local.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + 
                          " " + local.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        sendCmd(`sync:${fallback}`);
+        sendCmd(`time:${fallback}`);
     }
 }
 

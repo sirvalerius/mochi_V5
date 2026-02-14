@@ -55,8 +55,8 @@ private:
 
     // Progress bar
     int barWidth = (int)(290 * state.getProgress());
-    canvas->fillRoundRect(15, 130, 290, 4, 2, canvas->color565(200, 200, 200)); 
-    canvas->fillRoundRect(15, 130, barWidth, 4, 2, 0xADFF);
+    canvas->fillRoundRect(15, 145, 290, 4, 2, canvas->color565(200, 200, 200)); 
+    canvas->fillRoundRect(15, 145, barWidth, 4, 2, 0xADFF);
 
     // Debug Info
     drawDebugInfo(state);
