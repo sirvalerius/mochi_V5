@@ -19,12 +19,12 @@ MochiServer* webServer; // Puntatore al server
 
 void avantiPresentazione() {
   // Simula il tasto "Avanti" del mouse (Mouse 5)
-  Mouse.click(MOUSE_FORWARD); 
+  Mouse.click(0x10); 
 }
 
 void indietroPresentazione() {
   // Simula il tasto "Indietro" del mouse (Mouse 4)
-  Mouse.click(MOUSE_BACK);
+  Mouse.click(0x08);
 }
 
 void setup() {
