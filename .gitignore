@@ -1,0 +1,9 @@
+# Prodotti della compilazione locale
+bin/
+*.bin
+*.elf
+*.hex
+
+# Cartelle temporanee di Arduino
+build/
+libraries/
