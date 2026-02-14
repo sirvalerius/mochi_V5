@@ -2,9 +2,8 @@
 #define MOCHI_VIEW_H
 
 #ifndef MOCHI_VERSION
-#define MOCHI_VERSION "0.0.0 
-DEV"
-0#endif
+  #define MOCHI_VERSION "0.0.0-DEV"
+#endif
 
 #include <LovyanGFX.hpp>
 #include "Settings.h"
