@@ -6,9 +6,12 @@ let mochiCharacteristic = null;
 
 // Riferimenti UI
 const btnConnect = document.getElementById('btn-connect');
+const btnDisconnect = document.getElementById('btn-disconnect');
 const statusText = document.getElementById('status-text');
 const cmdButtons = document.querySelectorAll('.cmd-btn');
 const versionLabel = document.getElementById('version-label');
+
+let connectedDevice = null; // Ci serve per salvare il riferimento al device
 
 // 1. Caricamento versione dal file manifest (generato dalla CI)
 fetch('manifest.json')
@@ -32,6 +35,8 @@ async function connectToMochi() {
             // IMPORTANTE: Dichiariamo comunque il servizio che useremo
             optionalServices: [SERVICE_UUID]
         });
+		
+		connectedDevice = device;
 
         device.addEventListener('gattserverdisconnected', onDisconnected);
         statusText.innerHTML = `<span class="status-dot"></span> Connessione a ${device.name}...`;
@@ -44,6 +49,16 @@ async function connectToMochi() {
     } catch (error) {
         console.log("Ricerca annullata o nessun Mochi trovato.");
         statusText.innerHTML = `<span class="status-dot"></span> Disconnesso`;
+    }
+}
+
+async function disconnectMochi() {
+    if (!connectedDevice) return;
+
+    if (connectedDevice.gatt.connected) {
+        console.log("Disconnessione manuale...");
+        connectedDevice.gatt.disconnect();
+        // Nota: onDisconnected() verrà chiamata automaticamente dall'event listener
     }
 }
 
@@ -86,6 +101,8 @@ async function sendCmd(action) {
 
 // 4. Setup Event Listeners
 btnConnect.addEventListener('click', connectToMochi);
+// 5. Listener per il tasto disconnetti
+btnDisconnect.addEventListener('click', disconnectMochi);
 
 // Assegna l'azione a tutti i pulsanti con classe .cmd-btn
 cmdButtons.forEach(btn => {
