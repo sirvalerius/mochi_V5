@@ -50,11 +50,12 @@ public:
       hunger = prefs.getFloat("hunger", 50.0f);
       happy = prefs.getFloat("happy", 50.0f);
       currentAge = (AgeStage)prefs.getInt("age", (int)ADULT);
+      remoteTime = prefs.getString("savedTime", "00/00/0000 00:00");
       prefs.end();
       Serial.println("Dati caricati correttamente!");
     } else {
       Serial.println("Errore apertura NVS!");
-      hunger = 50.0; happy = 50.0;
+      hunger = 50.0; happy = 50.0; remoteTime = "00/00/0000 00:00";
     }
   }
 
@@ -63,6 +64,7 @@ public:
     prefs.putFloat("hunger", hunger);
     prefs.putFloat("happy", happy);
     prefs.putInt("age", (int)currentAge);
+    prefs.putString("savedTime", remoteTime);
     prefs.end();
     Serial.println("Dati salvati in memoria!");
   }
