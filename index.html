@@ -3,56 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Installa E-Pet IoT</title>
+    <title>Mochi Dashboard 🐹</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: #fafafa;
-            color: #333;
-        }
-        .card {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 400px;
-        }
-        h1 { margin-top: 0; }
-        p { color: #666; margin-bottom: 2rem; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #fef0f5; margin: 0; padding: 20px; color: #444; }
+        .card { background: white; padding: 25px; border-radius: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.08); max-width: 380px; margin: 20px auto; }
+        h1 { color: #ff6b6b; margin-bottom: 5px; }
+        .subtitle { font-size: 0.9em; color: #888; margin-bottom: 25px; }
         
-        /* Stile personalizzato per il bottone di ESP Web Tools (opzionale) */
-        esp-web-install-button {
-            --esp-tools-button-color: #007bff;
-            --esp-tools-button-text-color: white;
-        }
+        h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #aaa; margin-top: 30px; }
+        
+        .btn { display: block; width: 100%; padding: 18px; margin: 12px 0; font-size: 18px; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: white; transition: transform 0.1s, background-color 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        
+        /* Colori Azioni */
+        .feed { background-color: #ff9f43; }
+        .pet  { background-color: #ff6b6b; }
+        
+        /* Griglia Presentazione */
+        .pres-container { display: flex; gap: 10px; }
+        .slide-btn { flex: 1; background-color: #4b7bec; }
+        
+        /* Footer / Installer */
+        .footer-link { margin-top: 40px; display: inline-block; padding: 10px 20px; color: #4b7bec; text-decoration: none; font-size: 14px; border: 1px solid #4b7bec; border-radius: 20px; }
+        .footer-link:hover { background-color: #4b7bec; color: white; }
     </style>
-    
-    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 </head>
 <body>
 
     <div class="card">
-        <h1>Mochi: Il tuo E-Pet IoT 🐾</h1>
-        <p>Collega il tuo ESP32 via USB e clicca qui sotto per installare o aggiornare il firmware.</p>
+        <h1>Mochi Mouse</h1>
+        <p class="subtitle">Remote Control Interface</p>
         
-        <esp-web-install-button 
-            manifest="manifest.json"
-        >
-            <button slot="activate">Connetti e Installa</button>
-        </esp-web-install-button>
-        
-        <p style="font-size: 0.8em; margin-top: 20px;">
-            Assicurati di usare Chrome, Edge o Opera su Desktop o Android.
-        </p>
-		
-		<a href="https://adafruit.github.io/Adafruit_WebSerial_ESPTool/">additional esp tools:</a> 
+        <h3>Prenditi cura</h3>
+        <button class="btn feed" onclick="sendCmd('feed')">🍕 Dai Pappa</button>
+        <button class="btn pet"  onclick="sendCmd('pet')">❤️ Fai Carezze</button>
+
+        <h3>Presentazione</h3>
+        <div class="pres-container">
+            <button class="btn slide-btn" onclick="sendCmd('prev')">◀ Indietro</button>
+            <button class="btn slide-btn" onclick="sendCmd('next')">Avanti ▶</button>
+        </div>
+
+        <a href="./install" class="footer-link">⚙️ Aggiorna Firmware (Installer)</a>
     </div>
 
+    <script>
+        // Indirizzo IP di Mochi quando sei collegato al suo Wi-Fi
+        const MOCHI_IP = "http://192.168.4.1";
+
+        function sendCmd(action) {
+            console.log("Invio comando: " + action);
+            // Usiamo mode: 'no-cors' perché l'ESP32 non gestisce gli header CORS di default
+            fetch(`${MOCHI_IP}/cmd?act=${action}`, { mode: 'no-cors' })
+                .then(() => {
+                    console.log("Comando eseguito!");
+                })
+                .catch(err => {
+                    alert("Mochi non risponde. Controlla di essere collegato alla sua rete Wi-Fi!");
+                });
+        }
+    </script>
 </body>
 </html>
