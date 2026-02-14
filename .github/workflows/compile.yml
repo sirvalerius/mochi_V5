@@ -3,9 +3,10 @@ name: Compile and Deploy Firmware
 on:
   push:
     branches: [ main, master ]
-    # Richiesta 2: Il job parte SOLO se ci sono modifiche in questa cartella
+    # Ora il job parte se tocchi i sorgenti OPPURE se tocchi il workflow stesso
     paths:
       - 'src/**'
+      - '.github/workflows/**' 
 
 jobs:
   build:
@@ -30,40 +31,55 @@ jobs:
           arduino-cli lib install "LovyanGFX"
           arduino-cli lib install "Adafruit NeoPixel"
 
-      - - name: Set Version Number
+      # --- CORREZIONE QUI SOTTO (rimosso il doppio trattino) ---
+      - name: Set Version Number
         run: |
           BASE_VERSION="1.2"
-          
-          # Calcolo: Numero attuale - Offset
+          # Usa il run_number per l'incremento automatico
           PATCH=$(( ${{ github.run_number }} ))
           
           VERSION="${BASE_VERSION}.${PATCH}"
           echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Versione generata: $VERSION"
 
       - name: Update manifest.json
-        # Aggiorna automaticamente la versione nel file manifest.json
         run: |
           sed -i "s/\"version\": \".*\"/\"version\": \"${{ env.NEW_VERSION }}\"/" manifest.json
 
       - name: Compile Firmware
-        # Passiamo la versione anche al codice C++ come macro (opzionale ma utile)
         run: |
           mkdir -p ./bin
+          # Aggiunta la flag per esportare i binari uniti se supportato, altrimenti gestiamo dopo
           arduino-cli compile --fqbn esp32:esp32:esp32s3 \
             --build-property "build.usb_mode=1" \
             --build-property "compiler.cpp.extra_flags=-DMOCHI_VERSION=\"${{ env.NEW_VERSION }}\"" \
             --output-dir ./bin \
             ./src/Mochi_mouse_v5/Mochi_mouse_v5.ino
 
+      - name: List Output Files (Debug)
+        # Questo step ti aiuta a vedere cosa ha creato davvero il compilatore se fallisce il rename
+        run: ls -R bin/
+
       - name: Prepare Binary for Web
-        # Rinominiamo il file per matchare quello che cerca il manifest
-        run: mv bin/Mochi_mouse_v5.ino.merged.bin bin/firmware_merged.bin
+        # Nota: Arduino CLI a volte cambia nome output. Se fallisce qui, guarda i log del comando precedente.
+        # Spesso genera .ino.bin. Se non trovi .merged.bin, usa .ino.bin
+        run: |
+          if [ -f bin/Mochi_mouse_v5.ino.merged.bin ]; then
+            mv bin/Mochi_mouse_v5.ino.merged.bin bin/firmware_merged.bin
+          elif [ -f bin/Mochi_mouse_v5.ino.bin ]; then
+            mv bin/Mochi_mouse_v5.ino.bin bin/firmware_merged.bin
+            echo "ATTENZIONE: Usato binario non-merged. Se il web install fallisce, serve esptool merge."
+          else
+            echo "ERRORE: Nessun file binario trovato!"
+            exit 1
+          fi
 
       - name: Commit and Push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add -f bin/firmware_merged.bin  # <--- AGGIUNGI -f QUI
+          # Usiamo -f per forzare l'aggiunta anche se è nel gitignore
+          git add -f bin/firmware_merged.bin
           git add manifest.json
           git commit -m "Automated build: ${{ env.NEW_VERSION }}" || echo "No changes to commit"
           git push
