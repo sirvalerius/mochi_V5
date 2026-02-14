@@ -19,6 +19,8 @@ MochiView* view;
 //MochiServer* webServer; // Puntatore al server
 MochiBLE* ble;
 
+Adafruit_NeoPixel statusLed(NUM_PIXELS, PIN_RGB, NEO_GRB + NEO_KHZ800);
+
 void avantiPresentazione() {
   // Simula il tasto "Avanti" del mouse (Mouse 5)
   Mouse.click(0x10); 
@@ -33,6 +35,11 @@ void setup() {
   Serial.begin(115200);
   USB.begin();
   Mouse.begin();
+
+  statusLed.begin();
+  statusLed.setBrightness(50); 
+  statusLed.setPixelColor(0, statusLed.Color(0, 0, 0)); // Spegni all'inizio
+  statusLed.show();
 
   mochi.begin();
 
@@ -49,7 +56,7 @@ void setup() {
   // webServer = new MochiServer(&mochi);
   // webServer->begin();
 
-  ble = new MochiBLE(&mochi); 
+  ble = new MochiBLE(&mochi, &statusLed); 
   ble->begin();
 
   mochi.resetTimer();
