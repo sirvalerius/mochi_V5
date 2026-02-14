@@ -60,8 +60,16 @@ public:
 
         BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
         pAdvertising->addServiceUUID(SERVICE_UUID);
+        
+        // Questo assicura che il nome e l'UUID siano visibili subito durante lo scan
         pAdvertising->setScanResponse(true);
-        BLEDevice::startAdvertising();
+        pAdvertising->setMinPreferred(0x06);  
+        pAdvertising->setMinPreferred(0x12);
+        
+        // Avvia l'advertising usando l'oggetto pAdvertising
+        pAdvertising->start(); 
+        
+        Serial.println("Advertising avviato correttamente!");
         Serial.println("BLE Pronto come: " + deviceName);
     }
 
