@@ -18,6 +18,8 @@ public:
   float hunger;
   float happy;
   unsigned long lastActionTime = 0;
+
+  String remoteTime  = "00/00/0000 00:00";
   
   bool isDying = false;
   bool isHeartVisible = false;
@@ -82,7 +84,7 @@ public:
     commandFeedbackTime = millis();
     if (cmd.startsWith("time:")) {
         // Estraiamo la stringa dell'ora (tutto ciò che viene dopo "time:")
-        String remoteTime = cmd.substring(5);
+        remoteTime = cmd.substring(5);
         Serial.println("Ora sincronizzata: " + remoteTime);
         
         // Qui puoi salvare remoteTime in una variabile per mostrarla a video
