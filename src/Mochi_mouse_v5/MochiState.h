@@ -80,24 +80,24 @@ public:
   void applyCommand(String cmd) {
     lastCommand = cmd;
     commandFeedbackTime = millis();
-
-    if (cmd == "FEED") hunger += 20.0; 
+    if (cmd.startsWith("time:")) {
+        // Estraiamo la stringa dell'ora (tutto ciò che viene dopo "time:")
+        String remoteTime = cmd.substring(5);
+        Serial.println("Ora sincronizzata: " + remoteTime);
+        
+        // Qui puoi salvare remoteTime in una variabile per mostrarla a video
+        // mochiTime = remoteTime; 
+    } else if (cmd == "FEED") hunger += 20.0; 
     else if (cmd == "PLAY") happy += 20.0;
     else if (cmd == "GROW") growUp();
     else if (cmd == "KILL") {
       isDying = true;
       return;
-    }
-    else if (cmd == "GROW") {
+    } else if (cmd == "GROW") {
        growUp();
        return; 
-    }
-    else if (cmd = "prev") {
-
-    }
-    else if (cmd = "next") {
-      
-    }
+    } else if (cmd = "prev") {} 
+    else if (cmd = "next") {}
 
     if (hunger > MAX_VAL) hunger = MAX_VAL;
     if (happy > MAX_VAL) happy = MAX_VAL;
