@@ -6,7 +6,8 @@
 #include "DisplayDriver.h"
 #include "MochiState.h"
 #include "MochiView.h"
-#include "MochiServer.h" // <--- Includiamo il server
+//#include "MochiServer.h" 
+#include "MochiBLE.h"
 
 // --- OGGETTI GLOBALI ---
 LGFX_Waveshare display;
@@ -15,7 +16,8 @@ USBHIDMouse Mouse;
 
 MochiState mochi;
 MochiView* view;
-MochiServer* webServer; // Puntatore al server
+//MochiServer* webServer; // Puntatore al server
+MochiBLE* ble;
 
 void avantiPresentazione() {
   // Simula il tasto "Avanti" del mouse (Mouse 5)
@@ -44,8 +46,11 @@ void setup() {
   view = new MochiView(&canvas);
   
   // Avviamo il Server Web passando il puntatore allo stato
-  webServer = new MochiServer(&mochi);
-  webServer->begin();
+  // webServer = new MochiServer(&mochi);
+  // webServer->begin();
+
+  ble = new MochiBLE(&mochi); 
+  ble->begin();
 
   mochi.resetTimer();
 }
@@ -129,7 +134,7 @@ void loop() {
   bool isConnected = true;
 
   // 1. GESTIONE WEB SERVER (Importante!)
-  webServer->handle();
+  // webServer->handle();
 
   // --- CONTROLLO MORTE ---
   // Se il server ha settato il flag isDying, fermiamo tutto ed eseguiamo l'animazione

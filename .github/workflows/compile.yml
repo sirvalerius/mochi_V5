@@ -34,7 +34,7 @@ jobs:
       # --- CORREZIONE QUI SOTTO (rimosso il doppio trattino) ---
       - name: Set Version Number
         run: |
-          BASE_VERSION="1.2"
+          BASE_VERSION="2.0"
           # Usa il run_number per l'incremento automatico
           PATCH=$(( ${{ github.run_number }} ))
           
