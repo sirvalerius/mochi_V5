@@ -69,7 +69,7 @@ private:
     
     // Lo posizioniamo vicino al numero di serie o nell'angolo opposto
     // 310 è la coordinata X (quasi a fine schermo 320), 10 è la Y
-    canvas->drawString(state.debugDateTime.c_str(), 310, 5);
+    canvas->drawString(state.remoteTime.c_str(), 310, 5);
     
     canvas->setTextDatum(TL_DATUM); // Reset allineamento
 
