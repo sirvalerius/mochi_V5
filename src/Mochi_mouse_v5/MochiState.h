@@ -14,6 +14,10 @@ class MochiState {
 private:
   Preferences prefs; // Oggetto per gestire i salvataggi
 
+  unsigned long lastMinuteUpdate = 0;
+  int curHour = 0, curMin = 0;
+  int curDay = 1, curMonth = 1, curYear = 2026;
+
 public:
   float hunger;
   float happy;

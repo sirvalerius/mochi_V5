@@ -5,10 +5,36 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <Adafruit_NeoPixel.h>
 #include "MochiState.h"
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+// 1. Aggiungi questa classe SOPRA la classe MochiBLE
+class MochiServerCallbacks: public BLEServerCallbacks {
+    Adafruit_NeoPixel* led;
+public:
+    MochiServerCallbacks(Adafruit_NeoPixel* l) : led(l) {}
+
+    void onConnect(BLEServer* pServer) {
+        if(led) {
+            led->setPixelColor(0, led->Color(180, 0, 255)); // Viola
+            led->show();
+        }
+        Serial.println("BLE: Device Connesso");
+    }
+
+    void onDisconnect(BLEServer* pServer) {
+        if(led) {
+            led->setPixelColor(0, led->Color(0, 0, 0)); // Spento
+            led->show();
+        }
+        // Molto importante: riavvia l'advertising o non potrai riconnetterti!
+        pServer->getAdvertising()->start();
+        Serial.println("BLE: Device Disconnesso - Advertising riavviato");
+    }
+};
 
 class MochiBLECallbacks : public BLECharacteristicCallbacks {
     MochiState* statePtr;
@@ -31,6 +57,7 @@ class MochiBLE {
 private:
     BLEServer* pServer = NULL;
     BLECharacteristic* pCharacteristic = NULL;
+    Adafruit_NeoPixel* ledPtr;
     MochiState* statePtr;
 
 public:
@@ -44,6 +71,8 @@ public:
 
         BLEDevice::init(deviceName.c_str());
         pServer = BLEDevice::createServer();
+
+        pServer->setCallbacks(new MochiServerCallbacks(ledPtr));
         
         BLEService *pService = pServer->createService(SERVICE_UUID);
         pCharacteristic = pService->createCharacteristic(
