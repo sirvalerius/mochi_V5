@@ -20,6 +20,7 @@
         /* Colori Azioni */
         .feed { background-color: #ff9f43; }
         .pet  { background-color: #ff6b6b; }
+		.kill { background-color: #F2A799; }
         
         /* Griglia Presentazione */
         .pres-container { display: flex; gap: 10px; }
@@ -49,8 +50,9 @@
 		</div>
 
         <h3>Prenditi cura</h3>
-        <button class="btn feed cmd-btn" data-cmd="feed" disabled>🍕 Dai Pappa</button>
-        <button class="btn pet cmd-btn"  data-cmd="pet" disabled>❤️ Fai Carezze</button>
+        <button class="btn feed cmd-btn" data-cmd="FEED" disabled>🍕 Dai Pappa</button>
+        <button class="btn pet cmd-btn"  data-cmd="PLAY" disabled>❤️ Fai Carezze</button>
+		<button class="btn kill cmd-btn"  data-cmd="KILL" disabled>❤Reset</button>
 
         <h3>Presentazione</h3>
         <div class="pres-container">
