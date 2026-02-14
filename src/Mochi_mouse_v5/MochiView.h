@@ -1,6 +1,10 @@
 #ifndef MOCHI_VIEW_H
 #define MOCHI_VIEW_H
 
+#ifndef MOCHI_VERSION
+#define MOCHI_VERSION "DEV"
+#endif
+
 #include <LovyanGFX.hpp>
 #include "Settings.h"
 #include "MochiState.h" // Per conoscere i tipi di dati
@@ -80,6 +84,14 @@ public:
       // Usa la nuova funzione adattiva
       drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
     }
+
+    // --- AGGIUNTA: STAMPA VERSIONE IN BASSO A SINISTRA ---
+    canvas->setTextSize(1);
+    canvas->setTextColor(canvas->color565(100, 100, 100)); // Grigio scuro discreto
+    canvas->setCursor(5, 162); // Coordinate: x=5 (margine sx), y=162 (fondo)
+    canvas->print("v");
+    canvas->print(MOCHI_VERSION);
+
     canvas->pushSprite(0, 0);
   }
 
