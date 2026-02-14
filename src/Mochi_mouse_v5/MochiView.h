@@ -57,6 +57,28 @@ private:
     int barWidth = (int)(290 * state.getProgress());
     canvas->fillRoundRect(15, 158, 290, 4, 2, canvas->color565(200, 200, 200)); 
     canvas->fillRoundRect(15, 158, barWidth, 4, 2, 0xADFF);
+
+    // Debug Info
+    drawDebugInfo(state);
+  }
+
+  void drawDebugInfo(MochiState &state) {
+    canvas->setTextColor(K_PROG_FG); // Usiamo l'azzurro di sistema
+    canvas->setTextSize(1);
+    canvas->setTextDatum(TR_DATUM); // Top Right
+    
+    // Lo posizioniamo vicino al numero di serie o nell'angolo opposto
+    // 310 è la coordinata X (quasi a fine schermo 320), 10 è la Y
+    canvas->drawString(state.debugDateTime.c_str(), 310, 5);
+    
+    canvas->setTextDatum(TL_DATUM); // Reset allineamento
+
+    // --- AGGIUNTA: STAMPA VERSIONE IN BASSO A SINISTRA ---
+    canvas->setTextSize(1);
+    canvas->setTextColor(canvas->color565(100, 100, 100)); // Grigio scuro discreto
+    canvas->setCursor(5, 162); // Coordinate: x=5 (margine sx), y=162 (fondo)
+    canvas->print("v");
+    canvas->print(MOCHI_VERSION);
   }
 
 public:
@@ -84,13 +106,6 @@ public:
       // Usa la nuova funzione adattiva
       drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
     }
-
-    // --- AGGIUNTA: STAMPA VERSIONE IN BASSO A SINISTRA ---
-    canvas->setTextSize(1);
-    canvas->setTextColor(canvas->color565(100, 100, 100)); // Grigio scuro discreto
-    canvas->setCursor(5, 162); // Coordinate: x=5 (margine sx), y=162 (fondo)
-    canvas->print("v");
-    canvas->print(MOCHI_VERSION);
 
     canvas->pushSprite(0, 0);
   }
