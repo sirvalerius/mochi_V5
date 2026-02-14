@@ -30,12 +30,21 @@ jobs:
           arduino-cli lib install "LovyanGFX"
           arduino-cli lib install "Adafruit NeoPixel"
 
-      - name: Set Version Number
-        # Richiesta 1: Generiamo un numero di versione basato sul run di GitHub
+      - - name: Set Version Number
         run: |
-          VERSION="1.1.${{ github.run_number }}"
+          BASE_VERSION="1.2"
+          # Sottrai il numero di run totali fatti fino alla versione 1.1
+          # Se l'ultimo run della 1.1 era il 40, scrivi 40 qui sotto:
+          OFFSET=40 
+          
+          # Calcolo: Numero attuale - Offset
+          PATCH=$(( ${{ github.run_number }} - OFFSET ))
+          
+          # Se per sbaglio il calcolo è <= 0, metti 1
+          if [ $PATCH -le 0 ]; then PATCH=1; fi
+          
+          VERSION="${BASE_VERSION}.${PATCH}"
           echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Versione generata: $VERSION"
 
       - name: Update manifest.json
         # Aggiorna automaticamente la versione nel file manifest.json

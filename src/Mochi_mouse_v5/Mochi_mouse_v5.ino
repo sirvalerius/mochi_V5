@@ -154,8 +154,8 @@ void loop() {
      // Se riceve un comando WiFi, forza l'attivazione immediata
      mochi.isHeartVisible = true;
      mochi.heartShowTime = millis();
-     if (mochi.lastCommand = "prev") indietroPresentazione();
-     else if (mochi.lastCommand = "next") avantiPresentazione();
+     if (mochi.lastCommand == "prev") indietroPresentazione();
+     else if (mochi.lastCommand == "next") avantiPresentazione();
      mochi.lastCommand = ""; // Reset del comando dopo averlo processato
   } else {
      // Altrimenti, usa la logica casuale standard
