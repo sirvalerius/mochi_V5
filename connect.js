@@ -118,27 +118,45 @@ async function sendCmd(action) {
 
 async function syncMochiTime() {
     try {
-        const response = await fetch('https://worldtimeapi.org/api/ip');
-        const data = await response.json();
-        const now = new Date(data.datetime);
+        // Usiamo TimeAPI.io specificando la zona (più veloce e sicuro dell'IP lookup)
+        const response = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Europe/Rome');
         
-        // Formattiamo Giorno/Mese (es: 14/02)
-        const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '4-digit'});
+        if (!response.ok) throw new Error("TimeAPI non raggiungibile");
+
+        const data = await response.json();
+        
+        // TimeAPI restituisce il campo 'dateTime' pulito: "2024-02-14T17:30:00"
+        const now = new Date(data.dateTime);
+        
+        // Formattiamo Giorno/Mese (es: 14/02/2026)
+        const dateStr = now.toLocaleDateString('it-IT', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric' 
+        });
+        
         // Formattiamo Ora (es: 15:30)
-        const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const timeStr = now.toLocaleTimeString('it-IT', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
         
         const fullStatus = `${dateStr} ${timeStr}`;
-        console.log("Sincronizzazione completa:", fullStatus);
+        console.log("Sincronizzazione TimeAPI:", fullStatus);
         
-        // Inviamo il comando "sync:14/02 15:30"
+        // Inviamo il comando "time:..."
         await sendCmd(`time:${fullStatus}`);
         
     } catch (error) {
-        console.error("Errore API esterna, uso ora locale:", error);
+        console.error("Errore API esterna, attivo fallback locale:", error);
+        
+        // Fallback: usa l'orologio del computer se internet non va
         const local = new Date();
-        const fallback = local.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + 
+        const fallback = local.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) + 
                          " " + local.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        sendCmd(`time:${fallback}`);
+        
+        // Nota: sendCmd è async, quindi usiamo await anche qui
+        await sendCmd(`time:${fallback}`);
     }
 }
 
