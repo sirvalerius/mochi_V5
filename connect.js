@@ -67,6 +67,9 @@ function onConnected(name) {
     statusText.innerHTML = `<span class="status-dot online"></span> Connesso a <b>${name}</b>`;
     btnConnect.innerText = "Cambia Mochi";
     btnConnect.style.backgroundColor = "#a55eea"; // Cambio colore leggero per feedback
+	
+	btnConnect.style.display = "none";      // Nasconde "Cerca Mochi"
+    btnDisconnect.style.display = "block";  // MOSTRA "Scollega"
     
     // Abilita tutti i pulsanti di comando
     cmdButtons.forEach(btn => btn.removeAttribute('disabled'));
@@ -77,6 +80,9 @@ function onDisconnected() {
     statusText.innerHTML = `<span class="status-dot"></span> Mochi perso! Riconnetti.`;
     mochiCharacteristic = null;
     btnConnect.innerText = "🔍 Cerca Mochi";
+	
+	btnConnect.style.display = "block";     // Torna "Cerca Mochi"
+    btnDisconnect.style.display = "none";    // Sparisce "Scollega"
     
     // Disabilita i pulsanti per evitare errori
     cmdButtons.forEach(btn => btn.setAttribute('disabled', 'true'));
