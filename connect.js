@@ -63,7 +63,7 @@ async function disconnectMochi() {
 }
 
 // Helper: Aggiorna UI quando connesso
-function onConnected(name) {
+async function onConnected(name) {
     statusText.innerHTML = `<span class="status-dot online"></span> Connesso a <b>${name}</b>`;
     btnConnect.innerText = "Cambia Mochi";
     btnConnect.style.backgroundColor = "#a55eea"; // Cambio colore leggero per feedback
