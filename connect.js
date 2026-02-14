@@ -76,7 +76,14 @@ async function onConnected(name) {
 	
 	// Eseguiamo la sincronizzazione in modo asincrono.
     // Usiamo un piccolo delay iniziale per permettere al GATT di stabilizzarsi
-    await new Promise(resolve => setTimeout(resolve, 1000));
+	
+	try {
+        console.log("Avvio sincronizzazione ora...");
+        await setTimeout(syncMochiTime, 1000); 
+        console.log("Sincronizzazione completata con successo.");
+    } catch (error) {
+        console.error("Errore durante la sincronizzazione iniziale:", error);
+    }
 }
 
 // Helper: Aggiorna UI quando disconnesso
@@ -124,7 +131,7 @@ async function syncMochiTime() {
         console.log("Sincronizzazione completa:", fullStatus);
         
         // Inviamo il comando "sync:14/02 15:30"
-        await sendCmd(`sync:${fullStatus}`);
+        await sendCmd(`time:${fullStatus}`);
         
     } catch (error) {
         console.error("Errore API esterna, uso ora locale:", error);
