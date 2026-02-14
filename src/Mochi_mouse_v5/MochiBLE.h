@@ -61,7 +61,7 @@ private:
     MochiState* statePtr;
 
 public:
-    MochiBLE(MochiState* s) : statePtr(s) {}
+    MochiBLE(MochiState* s, Adafruit_NeoPixel* l) : statePtr(s), ledPtr(l) {}
 
     void begin() {
         uint32_t chipId = 0;
