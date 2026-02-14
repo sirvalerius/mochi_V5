@@ -25,9 +25,9 @@ async function connectToMochi() {
         statusText.innerHTML = `<span class="status-dot"></span> Ricerca Mochi in corso...`;
 
         const device = await navigator.bluetooth.requestDevice({
-            // FILTRO: Mostra solo dispositivi che iniziano con "Mochi-"
+            // FILTRO: Mostra solo dispositivi che iniziano con "MOCHI-"
             filters: [
-                { namePrefix: 'Mochi-' }
+                { namePrefix: 'MOCHI-' }
             ],
             // IMPORTANTE: Dichiariamo comunque il servizio che useremo
             optionalServices: [SERVICE_UUID]
