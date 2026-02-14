@@ -6,7 +6,7 @@
     {
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "bin/Mochi_mouse_v5.ino.merged.bin", "offset": 0 }
+        { "path": "bin/firmware_merged.bin", "offset": 0 }
       ]
     }
   ]
