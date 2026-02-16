@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mochi Dashboard 🐹</title>
+	
+	<div style="position: absolute; top: 20px; right: 20px; cursor: pointer; font-size: 24px;" id="btn-settings">⚙️</div>
+	<div id="settings-panel" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 1000; padding: 40px 20px;">
+		<div class="card">
+			<h2>Impostazioni</h2>
+			<p>Seleziona il tuo fuso orario:</p>
+			<select id="tz-selector" style="width: 100%; padding: 10px; border-radius: 10px; margin-bottom: 20px;">
+				<option value="Europe/Rome">Roma (Italia)</option>
+				<option value="UTC">UTC</option>
+				<option value="America/New_York">New York</option>
+				<option value="Asia/Tokyo">Tokyo</option>
+			</select>
+			<button id="btn-save-settings" class="btn" style="background-color: #2ecc71;">Salva e Chiudi</button>
+		</div>
+	</div>
+	
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #fef0f5; margin: 0; padding: 20px; color: #444; }
         .card { background: white; padding: 25px; border-radius: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.08); max-width: 380px; margin: 20px auto; }
