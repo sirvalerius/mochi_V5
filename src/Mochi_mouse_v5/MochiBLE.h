@@ -42,7 +42,6 @@ public:
     MochiBLECallbacks(MochiState* s) : statePtr(s) {}
 
     void onWrite(BLECharacteristic *pCharacteristic) {
-        // Rimuoviamo std::string e usiamo direttamente String (formato ESP32 core 3.x)
         String cmd = pCharacteristic->getValue(); 
 
         if (cmd.length() > 0) {
@@ -52,6 +51,17 @@ public:
                 // Estraiamo il timestamp saltando i primi 5 caratteri ("unix:")
                 long timestamp = atol(cmd.substring(5).c_str());
                 statePtr->syncTime(timestamp);
+            } else if (rxValue.startsWith("set_json:")) {
+                // Estrae tutto quello che c'è dopo "set_json:" e lo salva così com'è
+                String json = rxValue.substring(9); 
+                statePtr->saveSettings(json);
+                Serial.println("Settings salvati.");
+            } 
+            else if (rxValue == "get_json") {
+                // Prende la stringa salvata e la rimanda al browser
+                pCharacteristic->setValue(statePtr->settingsBlob.c_str());
+                pCharacteristic->notify();
+                Serial.println("Settings inviati al browser.");
             } else {
                 // Gestione dei comandi normali (FEED, PLAY, ecc.)
                 statePtr->applyCommand(cmd);
