@@ -76,7 +76,7 @@ async function syncMochiTime() {
         
         // Creiamo la data esplicita dai campi dell'API per evitare errori di fuso del browser
         const localDate = Date.UTC(data.year, data.month - 1, data.day, data.hour, data.minute, data.seconds);
-		if (data.isDstObserved()) {
+		if (!data.isDstObserved()) {
 			localDate += 3600*1000;
 		}
         const unixTimestamp = Math.floor(localDate / 1000);
