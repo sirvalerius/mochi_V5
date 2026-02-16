@@ -42,13 +42,19 @@ public:
     MochiBLECallbacks(MochiState* s) : statePtr(s) {}
 
     void onWrite(BLECharacteristic *pCharacteristic) {
-        // FIX 1: getValue() ora restituisce String (Arduino)
-        String value = pCharacteristic->getValue(); 
-        
+        std::string value = pCharacteristic->getValue();
         if (value.length() > 0) {
-            Serial.print("BLE Ricevuto: ");
-            Serial.println(value);
-            statePtr->applyCommand(value);
+            String cmd = String(value.c_str());
+            Serial.println("Ricevuto BLE: " + cmd);
+            
+            if (cmd.startsWith("unix:")) {
+                // Estraiamo il numero dopo "unix:" e lo convertiamo in long
+                long timestamp = atol(cmd.substring(5).c_str());
+                statePtr->syncTime(timestamp);
+            } else {
+                // Gestione dei comandi normali (FEED, PLAY, next, prev, etc)
+                statePtr->applyCommand(cmd);
+            }
         }
     }
 };

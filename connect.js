@@ -71,19 +71,28 @@ async function loadTimezones() {
 async function syncMochiTime() {
     try {
         const tz = localStorage.getItem('selectedTimezone') || 'Europe/Rome';
+        // Chiamiamo l'API per avere l'orario preciso della zona selezionata
         const response = await fetch(`https://timeapi.io/api/Time/current/zone?timeZone=${tz}`);
         const data = await response.json();
-        const now = new Date(data.dateTime);
         
-        const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        // Convertiamo la data dell'API in Unix Timestamp (secondi)
+        const unixTimestamp = Math.floor(new Date(data.dateTime).getTime() / 1000);
         
-        await sendCmd(`time:${dateStr} ${timeStr}`);
-        console.log("Mochi Sincronizzato:", tz);
-    } catch (e) {
-        const local = new Date();
-        const fallback = local.toLocaleDateString('it-IT') + " " + local.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
-        await sendCmd(`time:${fallback}`);
+        console.log(`Sincronizzazione in corso (${tz}). Timestamp: ${unixTimestamp}`);
+        
+        // Inviamo il comando come "unix:TIMESTAMP"
+        if (mochiCharacteristic) {
+            await sendCmd(`unix:${unixTimestamp}`);
+        }
+        
+    } catch (error) {
+        console.error("Errore API, uso fallback locale:", error);
+        
+        // Fallback: usiamo il timestamp del browser se l'API fallisce
+        const localTimestamp = Math.floor(Date.now() / 1000);
+        if (mochiCharacteristic) {
+            await sendCmd(`unix:${localTimestamp}`);
+        }
     }
 }
 

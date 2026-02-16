@@ -72,10 +72,28 @@ public:
     Serial.println("Dati salvati in memoria!");
   }
 
-  void setTime(time_t newUnixTime) {
-      baseUnixTime = newUnixTime;
-      syncMillis = millis();
-      saveState(); // Opzionale: salva su Preferences per ricordarlo al riavvio
+  void syncTime(long unixTime) {
+    baseUnixTime = unixTime;
+    syncMillis = millis();
+    Serial.print("BLE Sync: ");
+    Serial.println(baseUnixTime);
+  }
+
+  // Metodo per ottenere l'ora HH:MM aggiornata
+  String getTimeString() {
+    if (baseUnixTime == 0) return "--:--";
+    
+    // Calcoliamo il tempo attuale sommando i secondi passati dalla sync
+    unsigned long elapsedSeconds = (millis() - syncMillis) / 1000;
+    time_t now = baseUnixTime + elapsedSeconds;
+    
+    // Estraiamo ore e minuti (calcolo matematico semplice e leggero)
+    int hours = (now / 3600) % 24;
+    int minutes = (now / 60) % 60;
+    
+    char buffer[6]; // "HH:MM\0"
+    sprintf(buffer, "%02d:%02d", hours, minutes);
+    return String(buffer);
   }
 
   // Restituisce il timestamp Unix attuale "calcolato"
