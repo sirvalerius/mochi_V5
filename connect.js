@@ -3,6 +3,7 @@ const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
 let mochiCharacteristic = null;
+let connectedDevice = null;
 
 // Riferimenti UI
 const btnConnect = document.getElementById('btn-connect');
@@ -11,12 +12,12 @@ const statusText = document.getElementById('status-text');
 const cmdButtons = document.querySelectorAll('.cmd-btn');
 const versionLabel = document.getElementById('version-label');
 
+// Riferimenti Pannello Settings
 const btnSettings = document.getElementById('btn-settings');
 const settingsPanel = document.getElementById('settings-panel');
 const btnSaveSettings = document.getElementById('btn-save-settings');
 const tzSelector = document.getElementById('tz-selector');
 
-let connectedDevice = null; // Ci serve per salvare il riferimento al device
 
 // 1. Caricamento versione dal file manifest (generato dalla CI)
 fetch('manifest.json')
@@ -26,24 +27,90 @@ fetch('manifest.json')
     })
     .catch(err => console.log("Impossibile caricare la versione", err));
 
-// 1. Gestione Pannello
-btnSettings.onclick = () => settingsPanel.style.display = 'block';
+
+// 2. Funzioni Ausiliarie (Timezone & Sync)
+async function loadTimezones() {
+    console.log("Caricamento timezones...");
+    try {
+        // CORRETTO: Usa HTTPS e TimeAPI.io per evitare blocchi Mixed Content
+        const response = await fetch('https://timeapi.io/api/TimeZone/AvailableTimeZones');
+        const zones = await response.json();
+        
+        const savedTz = localStorage.getItem('selectedTimezone') || 'Europe/Rome';
+        
+        tzSelector.innerHTML = ''; // Svuota il messaggio "Caricamento..."
+        
+        zones.forEach(zone => {
+            const opt = document.createElement('option');
+            opt.value = zone;
+            opt.innerText = zone; // TimeAPI non usa underscore solitamente
+            if (zone === savedTz) opt.selected = true;
+            tzSelector.appendChild(opt);
+        });
+    } catch (e) {
+        console.error("Errore caricamento zone:", e);
+        // Fallback in caso di errore API
+        tzSelector.innerHTML = '<option value="Europe/Rome">Europe/Rome (Default)</option>';
+    }
+}
+
+async function syncMochiTime() {
+    try {
+        const selectedTz = localStorage.getItem('selectedTimezone') || 'Europe/Rome';
+        
+        // Chiamata API per ottenere l'ora della zona scelta
+        const response = await fetch(`https://timeapi.io/api/Time/current/zone?timeZone=${selectedTz}`);
+        const data = await response.json();
+
+        const now = new Date(data.dateTime);
+        
+        const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        
+        const fullStatus = `${dateStr} ${timeStr}`;
+        console.log(`Sincronizzazione (${selectedTz}):`, fullStatus);
+        
+        if (mochiCharacteristic) {
+            await sendCmd(`time:${fullStatus}`);
+        }
+        
+    } catch (error) {
+        console.error("Errore API Time, attivo fallback locale:", error);
+        
+        // Fallback: usa l'orologio del computer/telefono
+        const local = new Date();
+        const fallbackDate = local.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const fallbackTime = local.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        
+        if (mochiCharacteristic) {
+             await sendCmd(`time:${fallbackDate} ${fallbackTime}`);
+        }
+    }
+}
+
+
+// 3. Gestione Pannello Settings
+btnSettings.onclick = () => {
+    settingsPanel.style.display = 'block';
+    loadTimezones(); // Carica la lista solo quando apri il pannello
+};
+
 btnSaveSettings.onclick = () => {
     localStorage.setItem('selectedTimezone', tzSelector.value);
     settingsPanel.style.display = 'none';
+    
+    // Se siamo connessi, sincronizziamo subito l'ora con la nuova zona
+    if (mochiCharacteristic) syncMochiTime();
 };
 
-// 2. Funzione Connessione BLE
+
+// 4. Logica Bluetooth (BLE)
 async function connectToMochi() {
     try {
         statusText.innerHTML = `<span class="status-dot"></span> Ricerca Mochi in corso...`;
 
         const device = await navigator.bluetooth.requestDevice({
-            // FILTRO: Mostra solo dispositivi che iniziano con "MOCHI-"
-            filters: [
-                { namePrefix: 'MOCHI-' }
-            ],
-            // IMPORTANTE: Dichiariamo comunque il servizio che useremo
+            filters: [{ namePrefix: 'MOCHI-' }],
             optionalServices: [SERVICE_UUID]
         });
 		
@@ -56,9 +123,10 @@ async function connectToMochi() {
         const service = await server.getPrimaryService(SERVICE_UUID);
         mochiCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
-        onConnected(device.name);
+        await onConnected(device.name); // Aggiunto await per gestire la sync iniziale
+
     } catch (error) {
-        console.log("Ricerca annullata o nessun Mochi trovato.");
+        console.log("Ricerca annullata o errore:", error);
         statusText.innerHTML = `<span class="status-dot"></span> Disconnesso`;
     }
 }
@@ -69,48 +137,9 @@ async function disconnectMochi() {
     if (connectedDevice.gatt.connected) {
         console.log("Disconnessione manuale...");
         connectedDevice.gatt.disconnect();
-        // Nota: onDisconnected() verrà chiamata automaticamente dall'event listener
     }
 }
 
-// Helper: Aggiorna UI quando connesso
-async function onConnected(name) {
-    statusText.innerHTML = `<span class="status-dot online"></span> Connesso a <b>${name}</b>`;
-    btnConnect.innerText = "Cambia Mochi";
-    btnConnect.style.backgroundColor = "#a55eea"; // Cambio colore leggero per feedback
-	
-	btnConnect.style.display = "none";      // Nasconde "Cerca Mochi"
-    btnDisconnect.style.display = "block";  // MOSTRA "Scollega"
-    
-    // Abilita tutti i pulsanti di comando
-    cmdButtons.forEach(btn => btn.removeAttribute('disabled'));
-	
-	// Eseguiamo la sincronizzazione in modo asincrono.
-    // Usiamo un piccolo delay iniziale per permettere al GATT di stabilizzarsi
-	
-	try {
-        console.log("Avvio sincronizzazione ora...");
-        await setTimeout(syncMochiTime, 1000); 
-        console.log("Sincronizzazione completata con successo.");
-    } catch (error) {
-        console.error("Errore durante la sincronizzazione iniziale:", error);
-    }
-}
-
-// Helper: Aggiorna UI quando disconnesso
-function onDisconnected() {
-    statusText.innerHTML = `<span class="status-dot"></span> Mochi perso! Riconnetti.`;
-    mochiCharacteristic = null;
-    btnConnect.innerText = "🔍 Cerca Mochi";
-	
-	btnConnect.style.display = "block";     // Torna "Cerca Mochi"
-    btnDisconnect.style.display = "none";    // Sparisce "Scollega"
-    
-    // Disabilita i pulsanti per evitare errori
-    cmdButtons.forEach(btn => btn.setAttribute('disabled', 'true'));
-}
-
-// 3. Funzione Invio Comandi
 async function sendCmd(action) {
     if (!mochiCharacteristic) {
         alert("Non sei connesso a nessun Mochi!");
@@ -120,85 +149,56 @@ async function sendCmd(action) {
     try {
         const encoder = new TextEncoder();
         await mochiCharacteristic.writeValue(encoder.encode(action));
-        console.log(`Comando inviato BLE: ${action}`);
+        console.log(`Comando inviato: ${action}`);
     } catch (error) {
         console.error("Errore invio comando:", error);
-        onDisconnected(); // Se l'invio fallisce, consideriamo disconnesso
+        onDisconnected(); 
     }
 }
 
-async function syncMochiTime() {
-    try {
-        // Recupera la timezone salvata o usa Roma come default
-        const selectedTz = localStorage.getItem('selectedTimezone') || 'Europe/Rome';
+// 5. Gestione Stato Connessione (UI)
+async function onConnected(name) {
+    statusText.innerHTML = `<span class="status-dot online"></span> Connesso a <b>${name}</b>`;
+    
+    // Gestione bottoni
+    btnConnect.style.display = "none";
+    btnDisconnect.style.display = "block";
+    cmdButtons.forEach(btn => btn.removeAttribute('disabled'));
+	
+	// Sincronizzazione Iniziale
+	try {
+        console.log("Attesa stabilizzazione BLE...");
+        // CORRETTO: setTimeout dentro una Promise per funzionare con await
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Usiamo la variabile nell'URL dell'API
-        const response = await fetch(`https://timeapi.io/api/Time/current/zone?timeZone=${selectedTz}`);
-        const data = await response.json();
-
-        const now = new Date(data.dateTime);
-        
-        const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        
-        const fullStatus = `${dateStr} ${timeStr}`;
-        console.log(`Sincronizzazione (${selectedTz}):`, fullStatus);
-        
-        await sendCmd(`time:${fullStatus}`);
-        
+        console.log("Avvio sync ora...");
+		await syncMochiTime();
+        console.log("Sincronizzazione completata.");
     } catch (error) {
-        console.error("Errore API esterna, attivo fallback locale:", error);
-        
-        // Fallback: usa l'orologio del computer se internet non va
-        const local = new Date();
-        const fallback = local.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) + 
-                         " " + local.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        
-        // Nota: sendCmd è async, quindi usiamo await anche qui
-        await sendCmd(`time:${fallback}`);
+        console.error("Errore durante la sync iniziale:", error);
     }
 }
 
-async function loadTimezones() {
-    try {
-        const response = await fetch('http://worldtimeapi.org/api/timezone');
-        const zones = await response.json();
-        
-        const savedTz = localStorage.getItem('selectedTimezone') || 'Europe/Rome';
-        
-        tzSelector.innerHTML = ''; // Svuota il "Caricamento..."
-        
-        zones.forEach(zone => {
-            const opt = document.createElement('option');
-            opt.value = zone;
-            opt.innerText = zone.replace('_', ' ');
-            if (zone === savedTz) opt.selected = true;
-            tzSelector.appendChild(opt);
-        });
-    } catch (e) {
-        tzSelector.innerHTML = '<option value="Europe/Rome">Europe/Rome (Default)</option>';
-    }
+function onDisconnected() {
+    statusText.innerHTML = `<span class="status-dot"></span> Mochi perso! Riconnetti.`;
+    mochiCharacteristic = null;
+    connectedDevice = null;
+	
+    // Reset bottoni
+	btnConnect.innerText = "🔍 Cerca Mochi";
+    btnConnect.style.backgroundColor = ""; // Reset colore originale (gestito da CSS o default)
+	btnConnect.style.display = "block";
+    btnDisconnect.style.display = "none";
+    
+    cmdButtons.forEach(btn => btn.setAttribute('disabled', 'true'));
 }
 
-// Gestione apertura/chiusura
-btnSettings.onclick = () => {
-    settingsPanel.style.display = 'block';
-    loadTimezones(); // Carica la lista solo quando apri il pannello
-};
 
-btnSaveSettings.onclick = () => {
-    localStorage.setItem('selectedTimezone', tzSelector.value);
-    settingsPanel.style.display = 'none';
-    // Se siamo connessi, sincronizziamo subito l'ora con la nuova zona
-    if (mochiCharacteristic) syncMochiTime();
-};
-
-// 4. Setup Event Listeners
+// 6. Setup Event Listeners
 btnConnect.addEventListener('click', connectToMochi);
-// 5. Listener per il tasto disconnetti
 btnDisconnect.addEventListener('click', disconnectMochi);
 
-// Assegna l'azione a tutti i pulsanti con classe .cmd-btn
+// Assegna l'azione a tutti i pulsanti comando
 cmdButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         const action = btn.getAttribute('data-cmd');
