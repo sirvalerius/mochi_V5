@@ -42,17 +42,18 @@ public:
     MochiBLECallbacks(MochiState* s) : statePtr(s) {}
 
     void onWrite(BLECharacteristic *pCharacteristic) {
-        std::string value = pCharacteristic->getValue();
-        if (value.length() > 0) {
-            String cmd = String(value.c_str());
+        // Rimuoviamo std::string e usiamo direttamente String (formato ESP32 core 3.x)
+        String cmd = pCharacteristic->getValue(); 
+
+        if (cmd.length() > 0) {
             Serial.println("Ricevuto BLE: " + cmd);
             
             if (cmd.startsWith("unix:")) {
-                // Estraiamo il numero dopo "unix:" e lo convertiamo in long
+                // Estraiamo il timestamp saltando i primi 5 caratteri ("unix:")
                 long timestamp = atol(cmd.substring(5).c_str());
                 statePtr->syncTime(timestamp);
             } else {
-                // Gestione dei comandi normali (FEED, PLAY, next, prev, etc)
+                // Gestione dei comandi normali (FEED, PLAY, ecc.)
                 statePtr->applyCommand(cmd);
             }
         }

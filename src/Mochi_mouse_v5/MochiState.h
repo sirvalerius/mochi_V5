@@ -72,27 +72,25 @@ public:
     Serial.println("Dati salvati in memoria!");
   }
 
+  // --- LOGICA ORARIO ---
   void syncTime(long unixTime) {
     baseUnixTime = unixTime;
     syncMillis = millis();
-    Serial.print("BLE Sync: ");
-    Serial.println(baseUnixTime);
+    Serial.printf("Ora Sincronizzata: %ld\n", unixTime);
   }
 
   // Metodo per ottenere l'ora HH:MM aggiornata
   String getTimeString() {
     if (baseUnixTime == 0) return "--:--";
     
-    // Calcoliamo il tempo attuale sommando i secondi passati dalla sync
     unsigned long elapsedSeconds = (millis() - syncMillis) / 1000;
     time_t now = baseUnixTime + elapsedSeconds;
     
-    // Estraiamo ore e minuti (calcolo matematico semplice e leggero)
-    int hours = (now / 3600) % 24;
-    int minutes = (now / 60) % 60;
+    struct tm * timeinfo;
+    timeinfo = localtime(&now);
     
-    char buffer[6]; // "HH:MM\0"
-    sprintf(buffer, "%02d:%02d", hours, minutes);
+    char buffer[6];
+    sprintf(buffer, "%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min);
     return String(buffer);
   }
 
