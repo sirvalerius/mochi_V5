@@ -164,19 +164,34 @@ async function loadTimezones() {
         const response = await fetch('http://worldtimeapi.org/api/timezone');
         const zones = await response.json();
         
-        // Esempio: riempire una select con id "tz-selector"
-        const selector = document.getElementById('tz-selector');
+        const savedTz = localStorage.getItem('selectedTimezone') || 'Europe/Rome';
+        
+        tzSelector.innerHTML = ''; // Svuota il "Caricamento..."
+        
         zones.forEach(zone => {
-            let opt = document.createElement('option');
+            const opt = document.createElement('option');
             opt.value = zone;
-            opt.innerHTML = zone;
-            if(zone === "Europe/Rome") opt.selected = true;
-            selector.appendChild(opt);
+            opt.innerText = zone.replace('_', ' ');
+            if (zone === savedTz) opt.selected = true;
+            tzSelector.appendChild(opt);
         });
-    } catch (error) {
-        console.error("Errore nel caricamento delle zone:", error);
+    } catch (e) {
+        tzSelector.innerHTML = '<option value="Europe/Rome">Europe/Rome (Default)</option>';
     }
 }
+
+// Gestione apertura/chiusura
+btnSettings.onclick = () => {
+    settingsPanel.style.display = 'block';
+    loadTimezones(); // Carica la lista solo quando apri il pannello
+};
+
+btnSaveSettings.onclick = () => {
+    localStorage.setItem('selectedTimezone', tzSelector.value);
+    settingsPanel.style.display = 'none';
+    // Se siamo connessi, sincronizziamo subito l'ora con la nuova zona
+    if (mochiCharacteristic) syncMochiTime();
+};
 
 // 4. Setup Event Listeners
 btnConnect.addEventListener('click', connectToMochi);
