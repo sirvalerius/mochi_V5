@@ -36,6 +36,41 @@
 			/* Footer / Installer */
 			.footer-link { margin-top: 40px; display: inline-block; padding: 10px 20px; color: #4b7bec; text-decoration: none; font-size: 14px; border: 1px solid #4b7bec; border-radius: 20px; }
 			.footer-link:hover { background-color: #4b7bec; color: white; }
+			
+			#settings-backdrop {
+				position: fixed;
+				top: 0; left: 0; width: 100%; height: 100%;
+				background: rgba(0, 0, 0, 0.4);
+				z-index: 999; /* Sotto al pannello, sopra al resto */
+				display: none; /* Nascosto di default */
+				opacity: 0;
+				transition: opacity 0.3s ease;
+			}
+			#settings-backdrop.visible {
+				display: block;
+				opacity: 1;
+			}
+
+			/* Il Pannello Laterale */
+			#settings-panel {
+				position: fixed;
+				top: 0;
+				right: -320px; /* Nascosto fuori dallo schermo a destra */
+				width: 300px;
+				height: 100%;
+				background: #ffffff;
+				z-index: 1000;
+				box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+				transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animazione fluida */
+				padding: 30px 20px;
+				box-sizing: border-box;
+				display: block; /* Sempre renderizzato, solo spostato */
+			}
+
+			/* Classe per aprire il pannello */
+			#settings-panel.open {
+				right: 0;
+			}
 		</style>
 	</head>
 	<body>
@@ -70,16 +105,22 @@
 		
 		<div id="btn-settings" style="position: fixed; top: 20px; right: 20px; cursor: pointer; font-size: 24px; z-index: 100;">⚙️</div>
 
-		<div id="settings-panel" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.98); z-index: 1000; padding: 40px 20px; box-sizing: border-box;">
-			<div style="max-width: 400px; margin: 0 auto; text-align: center;">
-				<h2 style="color: #ff6b6b;">Preferenze</h2>
-				<p>Seleziona il tuo fuso orario:</p>
-				
-				<select id="tz-selector" style="width: 100%; padding: 12px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 20px; font-size: 16px;">
-					<option value="">Caricamento zone...</option>
-				</select>
+		<div id="settings-backdrop"></div>
 
-				<button id="btn-save-settings" class="btn" style="background-color: #2ecc71;">Salva e Chiudi</button>
+		<div id="settings-panel">
+			<h2 style="color: #ff6b6b; margin-top: 0;">Preferenze</h2>
+			<p style="color: #666; font-size: 0.9em;">Configura il tuo Mochi</p>
+			
+			<div style="margin-top: 30px;">
+				<label for="tz-selector" style="display: block; text-align: left; margin-bottom: 5px; font-weight: bold; color: #555;">Fuso Orario</label>
+				<select id="tz-selector" style="width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #eee; background: #f9f9f9; font-size: 14px;">
+					<option value="">Caricamento...</option>
+				</select>
+			</div>
+
+			<div style="margin-top: 40px;">
+				<button id="btn-save-settings" class="btn" style="background-color: #2ecc71;">Salva Impostazioni</button>
+				<button id="btn-close-settings" class="btn" style="background-color: #fab1a0; margin-top: 10px; color: #fff;">Annulla</button>
 			</div>
 		</div>
 	</body>

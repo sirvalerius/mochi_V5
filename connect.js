@@ -15,7 +15,9 @@ const versionLabel = document.getElementById('version-label');
 // Riferimenti Pannello Settings
 const btnSettings = document.getElementById('btn-settings');
 const settingsPanel = document.getElementById('settings-panel');
+const settingsBackdrop = document.getElementById('settings-backdrop'); // NUOVO
 const btnSaveSettings = document.getElementById('btn-save-settings');
+const btnCloseSettings = document.getElementById('btn-close-settings'); // NUOVO Tasto annulla
 const tzSelector = document.getElementById('tz-selector');
 
 
@@ -90,16 +92,28 @@ async function syncMochiTime() {
 
 
 // 3. Gestione Pannello Settings
-btnSettings.onclick = () => {
-    settingsPanel.style.display = 'block';
-    loadTimezones(); // Carica la lista solo quando apri il pannello
-};
+// Funzioni per Aprire/Chiudere
+function openSettings() {
+    settingsPanel.classList.add('open');
+    settingsBackdrop.classList.add('visible');
+    loadTimezones(); 
+}
+
+function closeSettings() {
+    settingsPanel.classList.remove('open');
+    settingsBackdrop.classList.remove('visible');
+}
+
+// Event Listeners
+btnSettings.onclick = openSettings;
+btnCloseSettings.onclick = closeSettings; // Chiude con il tasto Annulla
+settingsBackdrop.onclick = closeSettings; // Chiude cliccando sullo sfondo scuro
 
 btnSaveSettings.onclick = () => {
     localStorage.setItem('selectedTimezone', tzSelector.value);
-    settingsPanel.style.display = 'none';
+    closeSettings();
     
-    // Se siamo connessi, sincronizziamo subito l'ora con la nuova zona
+    // Feedback visivo o logica sync
     if (mochiCharacteristic) syncMochiTime();
 };
 
