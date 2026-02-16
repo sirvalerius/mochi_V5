@@ -19,7 +19,7 @@ public:
 
     void onConnect(BLEServer* pServer) {
         if(led) {
-            led->setPixelColor(0, led->Color(180, 0, 255)); // Viola
+            led->setPixelColor(0, led->Color(0, 255, 140));
             led->show();
         }
         Serial.println("BLE: Device Connesso");
