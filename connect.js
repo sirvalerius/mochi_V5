@@ -154,7 +154,7 @@ async function uploadSettings(settingsObj) {
 
 // Per caricare
 async function downloadSettings() {
-    await sendCmd("get_settings");
+    await sendCmd("get_json");
     // Aspetta un attimo che il Mochi aggiorni il valore
     await new Promise(r => setTimeout(r, 200)); 
     const value = await mochiCharacteristic.readValue();
@@ -198,7 +198,7 @@ async function saveAndUploadSettings() {
 
     // 3. Invia al Mochi via BLE
     // Usiamo un prefisso "set:" per far capire all'ESP32 che deve salvare
-    const payload = `set:${JSON.stringify(mochiSettings)}`;
+    const payload = `set_json:${JSON.stringify(mochiSettings)}`;
     await sendCmd(payload);
     
     console.log("Impostazioni inviate al Mochi!");

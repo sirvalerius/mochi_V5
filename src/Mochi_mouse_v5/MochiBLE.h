@@ -51,13 +51,13 @@ public:
                 // Estraiamo il timestamp saltando i primi 5 caratteri ("unix:")
                 long timestamp = atol(cmd.substring(5).c_str());
                 statePtr->syncTime(timestamp);
-            } else if (rxValue.startsWith("set_json:")) {
+            } else if (cmd.startsWith("set_json:")) {
                 // Estrae tutto quello che c'è dopo "set_json:" e lo salva così com'è
-                String json = rxValue.substring(9); 
+                String json = cmd.substring(9); 
                 statePtr->saveSettings(json);
                 Serial.println("Settings salvati.");
             } 
-            else if (rxValue == "get_json") {
+            else if (cmd == "get_json") {
                 // Prende la stringa salvata e la rimanda al browser
                 pCharacteristic->setValue(statePtr->settingsBlob.c_str());
                 pCharacteristic->notify();

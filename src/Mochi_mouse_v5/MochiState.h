@@ -22,8 +22,6 @@ public:
   float happy;
   unsigned long lastActionTime = 0;
 
-  String remoteTime  = "00/00/0000 00:00";
-
   String settingsBlob = "{}"; // Default: JSON vuoto
   
   bool isDying = false;
@@ -55,12 +53,13 @@ public:
       hunger = prefs.getFloat("hunger", 50.0f);
       happy = prefs.getFloat("happy", 50.0f);
       currentAge = (AgeStage)prefs.getInt("age", (int)ADULT);
-      remoteTime = prefs.getString("savedTime", "00/00/0000 00:00");
+      baseUnixTime = prefs.getULong("savedTime", 1700000000); // 1700... è un default recente
+      syncMillis = millis(); // Ripartiamo a contare da qui
       prefs.end();
       Serial.println("Dati caricati correttamente!");
     } else {
       Serial.println("Errore apertura NVS!");
-      hunger = 50.0; happy = 50.0; remoteTime = "00/00/0000 00:00";
+      hunger = 50.0; happy = 50.0;
     }
   }
 
@@ -69,7 +68,8 @@ public:
     prefs.putFloat("hunger", hunger);
     prefs.putFloat("happy", happy);
     prefs.putInt("age", (int)currentAge);
-    prefs.putString("savedTime", remoteTime);
+    unsigned long currentUnix = baseUnixTime + ((millis() - syncMillis) / 1000);
+    prefs.putULong("savedTime", currentUnix);
     prefs.end();
     Serial.println("Dati salvati in memoria!");
   }
@@ -134,14 +134,7 @@ public:
   void applyCommand(String cmd) {
     lastCommand = cmd;
     commandFeedbackTime = millis();
-    if (cmd.startsWith("time:")) {
-        // Estraiamo la stringa dell'ora (tutto ciò che viene dopo "time:")
-        remoteTime = cmd.substring(5);
-        Serial.println("Ora sincronizzata: " + remoteTime);
-        
-        // Qui puoi salvare remoteTime in una variabile per mostrarla a video
-        // mochiTime = remoteTime; 
-    } else if (cmd == "FEED") hunger += 20.0; 
+    if (cmd == "FEED") hunger += 20.0; 
     else if (cmd == "PLAY") happy += 20.0;
     else if (cmd == "GROW") growUp();
     else if (cmd == "KILL") {
