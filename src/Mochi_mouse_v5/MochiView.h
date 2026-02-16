@@ -64,9 +64,9 @@ private:
 
   void drawDebugInfo(MochiState &state) {
     // --- STAMPA ORA ---
-    canvas->setTextSize(1);
-    canvas->setTextColor(K_EYE);
-    canvas->setCursor(172 - 45, 10); // Posiziona in alto a destra
+    canvas->setTextColor(K_TEXT);
+    canvas->setFont(&fonts::FreeSansBold9pt7b);
+    canvas->setCursor(260, 10);
     canvas->print(state.getTimeString());
 
     // --- AGGIUNTA: STAMPA VERSIONE IN BASSO A SINISTRA ---
