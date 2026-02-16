@@ -100,16 +100,6 @@ public:
       return baseUnixTime + (millis() - syncMillis) / 1000;
   }
 
-  // Utility per avere una stringa formattata "HH:MM"
-  String getTimeString() {
-      time_t now = getNow();
-      if (now == 0) return "--:--";
-      struct tm *timeinfo = localtime(&now);
-      char buf[10];
-      strftime(buf, sizeof(buf), "%H:%M", timeinfo);
-      return String(buf);
-  }
-
   // --- LOGICA GIOCO ---
   void updateDecay() {
     hunger -= HUNGER_DECAY;
