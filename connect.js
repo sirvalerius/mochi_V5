@@ -76,9 +76,6 @@ async function syncMochiTime() {
         
         // Creiamo la data esplicita dai campi dell'API per evitare errori di fuso del browser
         const localDate = Date.UTC(data.year, data.month - 1, data.day, data.hour, data.minute, data.seconds);
-		if (!data.isDstObserved()) {
-			localDate += 3600*1000;
-		}
         const unixTimestamp = Math.floor(localDate / 1000);
         
         console.log(`Sincronizzazione orario (${tz}): ${data.time}`);
@@ -88,6 +85,7 @@ async function syncMochiTime() {
         }
     } catch (e) {
         // Fallback locale in caso di errore API
+		console.log(`Sincronizzazione orario fallback (${tz}): ${data.time}`);
         const unixTimestamp = Math.floor(Date.now() / 1000);
         await sendCmd(`unix:${unixTimestamp}`);
     }
