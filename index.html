@@ -1,127 +1,98 @@
 <!DOCTYPE html>
 <html lang="it">
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Mochi Dashboard 🐹</title>
-		
-		<style>
-			body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #fef0f5; margin: 0; padding: 20px; color: #444; }
-			.card { background: white; padding: 25px; border-radius: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.08); max-width: 380px; margin: 20px auto; }
-			h1 { color: #ff6b6b; margin-bottom: 5px; }
-			.subtitle { font-size: 0.9em; color: #888; margin-bottom: 25px; }
-			
-			h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #aaa; margin-top: 30px; }
-			
-			.btn { display: block; width: 100%; padding: 18px; margin: 12px 0; font-size: 18px; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: white; transition: transform 0.1s, background-color 0.2s, opacity 0.3s; }
-			.btn:active { transform: scale(0.98); }
-			/* Stato disabilitato per i pulsanti */
-			.btn:disabled { background-color: #e0e0e0; cursor: not-allowed; opacity: 0.6; transform: none; color: #999; }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi Dashboard 🐹</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #fef0f5; margin: 0; padding: 20px; color: #444; overflow-x: hidden; }
+        .card { background: white; padding: 25px; border-radius: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.08); max-width: 380px; margin: 20px auto; position: relative; }
+        h1 { color: #ff6b6b; margin-bottom: 5px; }
+        .subtitle { font-size: 0.9em; color: #888; margin-bottom: 25px; }
+        h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #aaa; margin-top: 30px; }
+        
+        .btn { display: block; width: 100%; padding: 18px; margin: 12px 0; font-size: 18px; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: white; transition: all 0.3s; }
+        .btn:disabled { background-color: #eee !important; color: #ccc; cursor: not-allowed; }
+        .feed { background-color: #ff9f43; }
+        .pet { background-color: #ff6b6b; }
+        .kill { background-color: #ee5253; }
+        .slide-btn { background-color: #4b7bec; }
 
-			/* Colori Azioni */
-			.feed { background-color: #ff9f43; }
-			.pet  { background-color: #ff6b6b; }
-			.kill { background-color: #F2A799; }
-			
-			/* Griglia Presentazione */
-			.pres-container { display: flex; gap: 10px; }
-			.slide-btn { flex: 1; background-color: #4b7bec; }
-			
-			/* Sezione Connessione BLE */
-			.connection-box { background: #f8f9fa; padding: 15px; border-radius: 15px; margin-bottom: 20px; border: 1px dashed #dcdcdc; }
-			.status-text { font-size: 0.9em; color: #666; margin-top: 10px; margin-bottom: 0; }
-			.status-dot { height: 10px; width: 10px; background-color: #ccc; border-radius: 50%; display: inline-block; margin-right: 5px; }
-			.status-dot.online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+        .status-text { font-size: 14px; margin-top: 10px; color: #888; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .status-dot { width: 10px; height: 10px; background-color: #ccc; border-radius: 50%; display: inline-block; }
+        .status-dot.online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
 
-			/* Footer / Installer */
-			.footer-link { margin-top: 40px; display: inline-block; padding: 10px 20px; color: #4b7bec; text-decoration: none; font-size: 14px; border: 1px solid #4b7bec; border-radius: 20px; }
-			.footer-link:hover { background-color: #4b7bec; color: white; }
-			
-			#settings-backdrop {
-				position: fixed;
-				top: 0; left: 0; width: 100%; height: 100%;
-				background: rgba(0, 0, 0, 0.4);
-				z-index: 999; /* Sotto al pannello, sopra al resto */
-				display: none; /* Nascosto di default */
-				opacity: 0;
-				transition: opacity 0.3s ease;
-			}
-			#settings-backdrop.visible {
-				display: block;
-				opacity: 1;
-			}
+        .footer-link { display: inline-block; margin-top: 30px; color: #4b7bec; text-decoration: none; font-size: 14px; padding: 8px 15px; border: 1px solid #4b7bec; border-radius: 20px; }
+        
+        /* --- STILI SIDEBAR --- */
+        #settings-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4); z-index: 999;
+            display: none; opacity: 0; transition: opacity 0.3s ease;
+        }
+        #settings-backdrop.visible { display: block; opacity: 1; }
 
-			/* Il Pannello Laterale */
-			#settings-panel {
-				position: fixed;
-				top: 0;
-				right: -320px; /* Nascosto fuori dallo schermo a destra */
-				width: 300px;
-				height: 100%;
-				background: #ffffff;
-				z-index: 1000;
-				box-shadow: -5px 0 15px rgba(0,0,0,0.1);
-				transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animazione fluida */
-				padding: 30px 20px;
-				box-sizing: border-box;
-				display: block; /* Sempre renderizzato, solo spostato */
-			}
+        #settings-panel {
+            position: fixed; top: 0; right: -320px; width: 300px; height: 100%;
+            background: #ffffff; z-index: 1000; padding: 30px 20px; box-sizing: border-box;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+            transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            text-align: left;
+        }
+        #settings-panel.open { right: 0; }
 
-			/* Classe per aprire il pannello */
-			#settings-panel.open {
-				right: 0;
-			}
-		</style>
-	</head>
-	<body>
+        #btn-settings { position: fixed; top: 20px; right: 20px; cursor: pointer; font-size: 24px; z-index: 100; transition: transform 0.3s; }
+        #btn-settings:hover { transform: rotate(45deg); }
+    </style>
+</head>
+<body>
 
-		<div class="card">
-			<h1>Mochi Mouse</h1>
-			<p class="subtitle">Remote Control Interface</p>
-			
-			<div class="connection-box">
-				<button id="btn-connect" class="btn slide-btn" style="margin: 0; background-color: #6c5ce7;">🔍 Cerca Mochi</button>
-				<button id="btn-disconnect" class="btn" style="margin: 10px 0 0 0; background-color: #eb4d4b; display: none; padding: 10px; font-size: 14px;">🔌 Scollega</button>
-				<p id="status-text" class="status-text"><span class="status-dot"></span>disconnesso</p>
-			</div>
+    <div id="btn-settings">⚙️</div>
 
-			<h3>Prenditi cura</h3>
-			<button class="btn feed cmd-btn" data-cmd="FEED" disabled>🍕 Dai Pappa</button>
-			<button class="btn pet cmd-btn"  data-cmd="PLAY" disabled>❤️ Fai Carezze</button>
-			<button class="btn kill cmd-btn"  data-cmd="KILL" disabled>❤ Reset</button>
+    <div class="card">
+        <h1>Mochi Mouse</h1>
+        <p class="subtitle">Remote Control Interface</p>
+        
+        <div class="connection-box">
+            <button id="btn-connect" class="btn slide-btn" style="margin: 0; background-color: #6c5ce7;">🔍 Cerca Mochi</button>
+            <button id="btn-disconnect" class="btn" style="margin: 10px 0 0 0; background-color: #eb4d4b; display: none; padding: 10px; font-size: 14px;">🔌 Scollega</button>
+            <p id="status-text" class="status-text"><span class="status-dot"></span> disconnesso</p>
+        </div>
 
-			<h3>Presentazione</h3>
-			<div class="pres-container">
-				<button class="btn slide-btn cmd-btn" data-cmd="prev" disabled>◀ Indietro</button>
-				<button class="btn slide-btn cmd-btn" data-cmd="next" disabled>Avanti ▶</button>
-			</div>
+        <h3>Prenditi cura</h3>
+        <button class="btn feed cmd-btn" data-cmd="FEED" disabled>🍕 Dai Pappa</button>
+        <button class="btn pet cmd-btn"  data-cmd="PLAY" disabled>❤️ Fai Carezze</button>
+        <button class="btn kill cmd-btn"  data-cmd="KILL" disabled>❤ Reset</button>
 
-			<a href="./install" class="footer-link">
-				⚙️ Aggiorna Firmware <span id="version-label">..</span>
-			</a>
-		</div>
+        <h3>Presentazione</h3>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn slide-btn cmd-btn" data-cmd="prev" disabled>◀ Indietro</button>
+            <button class="btn slide-btn cmd-btn" data-cmd="next" disabled>Avanti ▶</button>
+        </div>
 
-		<script type="module" src="connect.js"></script>
-		
-		<div id="btn-settings" style="position: fixed; top: 20px; right: 20px; cursor: pointer; font-size: 24px; z-index: 100;">⚙️</div>
+        <a href="./install.html" class="footer-link">
+            ⚙️ Firmware <span id="version-label">..</span>
+        </a>
+    </div>
 
-		<div id="settings-backdrop"></div>
+    <div id="settings-backdrop"></div>
+    <div id="settings-panel">
+        <h2 style="color: #ff6b6b; margin-top: 0;">Impostazioni</h2>
+        <p style="color: #888; font-size: 0.9em;">Personalizza l'esperienza</p>
+        
+        <div style="margin-top: 30px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 8px;">Fuso Orario</label>
+            <select id="tz-selector" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 15px;">
+                <option value="">Caricamento zone...</option>
+            </select>
+        </div>
 
-		<div id="settings-panel">
-			<h2 style="color: #ff6b6b; margin-top: 0;">Preferenze</h2>
-			<p style="color: #666; font-size: 0.9em;">Configura il tuo Mochi</p>
-			
-			<div style="margin-top: 30px;">
-				<label for="tz-selector" style="display: block; text-align: left; margin-bottom: 5px; font-weight: bold; color: #555;">Fuso Orario</label>
-				<select id="tz-selector" style="width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #eee; background: #f9f9f9; font-size: 14px;">
-					<option value="">Caricamento...</option>
-				</select>
-			</div>
+        <div style="margin-top: 40px;">
+            <button id="btn-save-settings" class="btn" style="background-color: #2ecc71;">Salva</button>
+            <button id="btn-close-settings" class="btn" style="background-color: #eee; color: #666; font-size: 14px; padding: 10px;">Chiudi</button>
+        </div>
+    </div>
 
-			<div style="margin-top: 40px;">
-				<button id="btn-save-settings" class="btn" style="background-color: #2ecc71;">Salva Impostazioni</button>
-				<button id="btn-close-settings" class="btn" style="background-color: #fab1a0; margin-top: 10px; color: #fff;">Annulla</button>
-			</div>
-		</div>
-	</body>
+    <script type="module" src="connect.js"></script>
+</body>
 </html>
