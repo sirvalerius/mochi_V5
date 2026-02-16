@@ -65,7 +65,7 @@ private:
   void drawDebugInfo(MochiState &state) {
     // --- STAMPA ORA ---
     canvas->setTextColor(K_PROG_FG);
-    canvas->setFont(&fonts::FreeSansBold9pt7b);
+    //canvas->setFont(&fonts::FreeSansBold9pt7b);
     canvas->setCursor(260, 10);
     canvas->print(state.getTimeString());
 
