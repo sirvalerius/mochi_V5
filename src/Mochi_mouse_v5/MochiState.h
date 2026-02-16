@@ -83,16 +83,19 @@ public:
   String getTimeString() {
     if (baseUnixTime == 0) return "--:--";
     
+    // Calcoliamo i secondi passati dalla sincronizzazione
     unsigned long elapsedSeconds = (millis() - syncMillis) / 1000;
     time_t now = baseUnixTime + elapsedSeconds;
     
+    // Usiamo gmtime per visualizzare il timestamp "così com'è" 
+    // senza che l'ESP32 aggiunga ore di testa sua
     struct tm * timeinfo;
-    timeinfo = localtime(&now);
+    timeinfo = gmtime(&now); 
     
-    char buffer[6];
+    char buffer[6]; // "HH:MM\0"
     sprintf(buffer, "%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min);
     return String(buffer);
-  }
+}
 
   // Restituisce il timestamp Unix attuale "calcolato"
   time_t getNow() {
