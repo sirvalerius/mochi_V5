@@ -42,6 +42,7 @@ void setup() {
   statusLed.show();
 
   mochi.begin();
+  mochi.loadSettings();
 
   display.init();
   display.setRotation(1);

@@ -23,6 +23,8 @@ public:
   unsigned long lastActionTime = 0;
 
   String remoteTime  = "00/00/0000 00:00";
+
+  String settingsBlob = "{}"; // Default: JSON vuoto
   
   bool isDying = false;
   bool isHeartVisible = false;
@@ -70,6 +72,20 @@ public:
     prefs.putString("savedTime", remoteTime);
     prefs.end();
     Serial.println("Dati salvati in memoria!");
+  }
+
+  void loadSettings() {
+      prefs.begin("mochi-data", false);
+      // Legge la stringa "settings", se non esiste usa "{}"
+      settingsBlob = prefs.getString("settings", "{}");
+      prefs.end();
+  }
+
+  void saveSettings(String newJson) {
+      settingsBlob = newJson;
+      prefs.begin("mochi-data", false);
+      prefs.putString("settings", settingsBlob);
+      prefs.end();
   }
 
   // --- LOGICA ORARIO ---
