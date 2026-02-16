@@ -14,9 +14,8 @@ class MochiState {
 private:
   Preferences prefs; // Oggetto per gestire i salvataggi
 
-  unsigned long lastMinuteUpdate = 0;
-  int curHour = 0, curMin = 0;
-  int curDay = 1, curMonth = 1, curYear = 2026;
+  time_t baseUnixTime = 0;       // Il tempo Unix ricevuto via BLE/WiFi
+  unsigned long syncMillis = 0;  // Il valore di millis() al momento della sicro
 
 public:
   float hunger;
@@ -71,6 +70,28 @@ public:
     prefs.putString("savedTime", remoteTime);
     prefs.end();
     Serial.println("Dati salvati in memoria!");
+  }
+
+  void setTime(time_t newUnixTime) {
+      baseUnixTime = newUnixTime;
+      syncMillis = millis();
+      saveState(); // Opzionale: salva su Preferences per ricordarlo al riavvio
+  }
+
+  // Restituisce il timestamp Unix attuale "calcolato"
+  time_t getNow() {
+      if (baseUnixTime == 0) return 0; 
+      return baseUnixTime + (millis() - syncMillis) / 1000;
+  }
+
+  // Utility per avere una stringa formattata "HH:MM"
+  String getTimeString() {
+      time_t now = getNow();
+      if (now == 0) return "--:--";
+      struct tm *timeinfo = localtime(&now);
+      char buf[10];
+      strftime(buf, sizeof(buf), "%H:%M", timeinfo);
+      return String(buf);
   }
 
   // --- LOGICA GIOCO ---

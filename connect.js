@@ -11,6 +11,11 @@ const statusText = document.getElementById('status-text');
 const cmdButtons = document.querySelectorAll('.cmd-btn');
 const versionLabel = document.getElementById('version-label');
 
+const btnSettings = document.getElementById('btn-settings');
+const settingsPanel = document.getElementById('settings-panel');
+const btnSaveSettings = document.getElementById('btn-save-settings');
+const tzSelector = document.getElementById('tz-selector');
+
 let connectedDevice = null; // Ci serve per salvare il riferimento al device
 
 // 1. Caricamento versione dal file manifest (generato dalla CI)
@@ -21,6 +26,12 @@ fetch('manifest.json')
     })
     .catch(err => console.log("Impossibile caricare la versione", err));
 
+// 1. Gestione Pannello
+btnSettings.onclick = () => settingsPanel.style.display = 'block';
+btnSaveSettings.onclick = () => {
+    localStorage.setItem('selectedTimezone', tzSelector.value);
+    settingsPanel.style.display = 'none';
+};
 
 // 2. Funzione Connessione BLE
 async function connectToMochi() {
@@ -118,33 +129,21 @@ async function sendCmd(action) {
 
 async function syncMochiTime() {
     try {
-        // Usiamo TimeAPI.io specificando la zona (più veloce e sicuro dell'IP lookup)
-        const response = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Europe/Rome');
+        // Recupera la timezone salvata o usa Roma come default
+        const selectedTz = localStorage.getItem('selectedTimezone') || 'Europe/Rome';
         
-        if (!response.ok) throw new Error("TimeAPI non raggiungibile");
-
+        // Usiamo la variabile nell'URL dell'API
+        const response = await fetch(`https://timeapi.io/api/Time/current/zone?timeZone=${selectedTz}`);
         const data = await response.json();
-        
-        // TimeAPI restituisce il campo 'dateTime' pulito: "2024-02-14T17:30:00"
+
         const now = new Date(data.dateTime);
         
-        // Formattiamo Giorno/Mese (es: 14/02/2026)
-        const dateStr = now.toLocaleDateString('it-IT', { 
-            day: '2-digit', 
-            month: '2-digit', 
-            year: 'numeric' 
-        });
-        
-        // Formattiamo Ora (es: 15:30)
-        const timeStr = now.toLocaleTimeString('it-IT', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
+        const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
         
         const fullStatus = `${dateStr} ${timeStr}`;
-        console.log("Sincronizzazione TimeAPI:", fullStatus);
+        console.log(`Sincronizzazione (${selectedTz}):`, fullStatus);
         
-        // Inviamo il comando "time:..."
         await sendCmd(`time:${fullStatus}`);
         
     } catch (error) {
@@ -157,6 +156,25 @@ async function syncMochiTime() {
         
         // Nota: sendCmd è async, quindi usiamo await anche qui
         await sendCmd(`time:${fallback}`);
+    }
+}
+
+async function loadTimezones() {
+    try {
+        const response = await fetch('http://worldtimeapi.org/api/timezone');
+        const zones = await response.json();
+        
+        // Esempio: riempire una select con id "tz-selector"
+        const selector = document.getElementById('tz-selector');
+        zones.forEach(zone => {
+            let opt = document.createElement('option');
+            opt.value = zone;
+            opt.innerHTML = zone;
+            if(zone === "Europe/Rome") opt.selected = true;
+            selector.appendChild(opt);
+        });
+    } catch (error) {
+        console.error("Errore nel caricamento delle zone:", error);
     }
 }
 

@@ -63,15 +63,11 @@ private:
   }
 
   void drawDebugInfo(MochiState &state) {
-    canvas->setTextColor(K_PROG_FG); // Usiamo l'azzurro di sistema
-    canvas->setTextSize(1);
-    canvas->setTextDatum(TR_DATUM); // Top Right
-    
-    // Lo posizioniamo vicino al numero di serie o nell'angolo opposto
-    // 310 è la coordinata X (quasi a fine schermo 320), 10 è la Y
-    canvas->drawString(state.remoteTime.c_str(), 310, 5);
-    
-    canvas->setTextDatum(TL_DATUM); // Reset allineamento
+    // --- STAMPA ORA ---
+    canvas->setTextColor(K_TEXT);
+    canvas->setFont(&fonts::FreeSansBold9pt7b);
+    canvas->setCursor(260, 10);
+    canvas->print(state.getTimeString());
 
     // --- AGGIUNTA: STAMPA VERSIONE IN BASSO A SINISTRA ---
     canvas->setTextSize(1);
