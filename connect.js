@@ -137,6 +137,8 @@ async function disconnectMochi() {
 async function sendCmd(action) {
     if (!mochiCharacteristic) return;
     try {
+		// Logga esattamente cosa stiamo per mandare via BLE
+        console.log(`[BLE SEND] -> ${action}`);
         await mochiCharacteristic.writeValue(new TextEncoder().encode(action));
     } catch (e) { console.error("Errore invio:", e); }
 }
