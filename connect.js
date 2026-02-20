@@ -137,6 +137,21 @@ async function onConnected(name) {
 	await downloadSettings();
 	
     statusText.innerHTML = `<span class="status-dot online"></span> Connesso: ${name}`;
+	
+	await mochiCharacteristic.startNotifications();
+	mochiCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
+		const value = new TextDecoder().decode(event.targer.value);
+		console.log("[BLE RECEIVE] <-", value);
+		
+		if (value.startsWith('{')) {
+			try {
+				mochiSettings = JSON.parse(value);
+				if(mochiSettings.timezone) tzSelector.value = mochiSettings.timezone;
+				console.log("updated settings from Mochi");
+			} catch (e) { console.error("JSON Parse Error", e); }
+		}
+	});
+	
     btnConnect.style.display = "none";
     btnDisconnect.style.display = "block";
     cmdButtons.forEach(b => b.removeAttribute('disabled'));
