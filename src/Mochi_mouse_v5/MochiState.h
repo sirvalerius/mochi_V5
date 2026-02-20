@@ -73,6 +73,7 @@ public:
     prefs.putInt("age", (int)currentAge);
     unsigned long currentUnix = baseUnixTime + ((millis() - syncMillis) / 1000);
     prefs.putULong("savedTime", currentUnix);
+    prefs.putString("settings", settingsBlob);
     prefs.end();
     Serial.println("Dati salvati in memoria!");
   }
@@ -96,6 +97,8 @@ public:
     baseUnixTime = unixTime;
     syncMillis = millis();
     Serial.printf("Ora Sincronizzata: %ld\n", unixTime);
+
+    saveState();
   }
 
   // Metodo per ottenere l'ora HH:MM aggiornata

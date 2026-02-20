@@ -55,6 +55,7 @@ public:
                 // Estrae tutto quello che c'è dopo "set_json:" e lo salva così com'è
                 String json = cmd.substring(9); 
                 statePtr->saveSettings(json);
+                statePtr->saveState(); 
                 Serial.println("Settings salvati.");
             } 
             else if (cmd == "get_json") {

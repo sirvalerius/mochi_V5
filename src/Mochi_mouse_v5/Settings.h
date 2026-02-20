@@ -29,6 +29,20 @@
 #define K_GHOST_BODY  0xE73C // Un bianco/grigio freddo, spettrale
 #define K_GHOST_EYE   0x3186 // Grigio scuro per le X
 
+#define K_BG_TOP      0xFD19  // Rosa (Ex: 255, 160, 200)
+#define K_BG_BOTTOM   0x879F  // Azzurro (Ex: 130, 240, 255)
+
+// --- IMPOSTAZIONI GRADIENTE SFONDO DI DEFAULT ---
+// Colore in alto (Start)
+#define DEFAULT_BG_TOP_R 255
+#define DEFAULT_BG_TOP_G 160
+#define DEFAULT_BG_TOP_B 200
+
+// Colore in basso (End)
+#define DEFAULT_BG_BOT_R 130
+#define DEFAULT_BG_BOT_G 240
+#define DEFAULT_BG_BOT_B 255
+
 // --- LOGICA GIOCO ---
 #define MAX_VAL 100.0
 #define HUNGER_DECAY 0.0005
