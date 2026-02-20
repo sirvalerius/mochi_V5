@@ -13,14 +13,48 @@ class MochiView {
 private:
   LGFX_Sprite* canvas; // Puntatore allo sprite
 
+  uint16_t bgColors[172]; 
+  bool bgCalculated = false;
+
+  uint16_t currentBgTop = K_BG_TOP;
+  uint16_t currentBgBottom = K_BG_BOTTOM;
+
   void drawBackground() {
-    // Disegna solo se necessario o ottimizzato
+    // Calcola i colori del gradiente SOLO se è cambiato o è il primo avvio
+    if (!bgCalculated) {
+      
+      // 1. "Spacchetta" i colori a 16-bit nei 3 canali R, G, B (0-255)
+      uint8_t topR = ((currentBgTop >> 11) & 0x1F) * 255 / 31;
+      uint8_t topG = ((currentBgTop >> 5) & 0x3F) * 255 / 63;
+      uint8_t topB = (currentBgTop & 0x1F) * 255 / 31;
+
+      uint8_t botR = ((currentBgBottom >> 11) & 0x1F) * 255 / 31;
+      uint8_t botG = ((currentBgBottom >> 5) & 0x3F) * 255 / 63;
+      uint8_t botB = (currentBgBottom & 0x1F) * 255 / 31;
+
+      for (int i = 0; i < 172; i++) {
+        // Usa 171.0 così l'ultima riga (171) raggiunge esattamente 1.0
+        float ratio = (float)i / 171.0; 
+        
+        // Curva a Coseno per transizioni morbide
+        float smoothRatio = (1.0 - cos(ratio * PI)) / 2.0;
+
+        // Calcola la sfumatura con i canali spacchettati
+        int r = (int)((1.0 - smoothRatio) * topR + smoothRatio * botR);
+        int g = (int)((1.0 - smoothRatio) * topG + smoothRatio * botG);
+        int b = (int)((1.0 - smoothRatio) * topB + smoothRatio * botB);
+
+        // RIMOSSO IL DITHERING CASUALE!
+        
+        // Ricompatta e salva nell'array
+        bgColors[i] = canvas->color565(r, g, b);
+      }
+      bgCalculated = true; // Array pronto!
+    }
+
+    // Disegna lo sfondo alla massima velocità
     for (int i = 0; i < 172; i++) {
-      float ratio = (float)i / 172.0;
-      int r = (int)((1.0 - ratio) * 255 + ratio * 130);
-      int g = (int)((1.0 - ratio) * 160 + ratio * 240);
-      int b = (int)((1.0 - ratio) * 200 + ratio * 255);
-      canvas->drawFastHLine(0, i, 320, canvas->color565(r, g, b));
+      canvas->drawFastHLine(0, i, 320, bgColors[i]);
     }
   }
 
@@ -104,6 +138,12 @@ public:
     }
 
     canvas->pushSprite(0, 0);
+  }
+
+  void setBackgroundGradient(uint16_t topHex, uint16_t botHex) {
+    currentBgTop = topHex;
+    currentBgBottom = botHex;
+    bgCalculated = false; // Forza il ricalcolo al prossimo frame
   }
 
   void drawGrowthFrame(float t, AgeStage from, AgeStage to) {
