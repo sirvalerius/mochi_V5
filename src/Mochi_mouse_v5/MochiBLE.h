@@ -87,6 +87,7 @@ public:
         deviceName.toUpperCase();
 
         BLEDevice::init(deviceName.c_str());
+        BLEDevice::setMTU(512);
         pServer = BLEDevice::createServer();
 
         pServer->setCallbacks(new MochiServerCallbacks(ledPtr));
