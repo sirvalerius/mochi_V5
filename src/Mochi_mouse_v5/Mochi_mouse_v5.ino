@@ -63,6 +63,10 @@ void setup() {
   mochi.resetTimer();
 }
 
+void performMouseClick() {
+  Mouse.click();
+}
+
 void performMouseRoutine() {
   // Salti di gioia
   for(int j=0; j<2; j++) {
@@ -167,8 +171,8 @@ void loop() {
      // Se riceve un comando WiFi, forza l'attivazione immediata
      mochi.isHeartVisible = true;
      mochi.heartShowTime = millis();
-     if (mochi.lastCommand == "prev") indietroPresentazione();
-     else if (mochi.lastCommand == "next") avantiPresentazione();
+     //if (mochi.lastCommand == "prev") indietroPresentazione();
+     //else if (mochi.lastCommand == "next") avantiPresentazione();
      mochi.lastCommand = ""; // Reset del comando dopo averlo processato
   } else {
      // Altrimenti, usa la logica casuale standard
@@ -182,10 +186,15 @@ void loop() {
   // 4. Disegna
   view->render(mochi, (int)bounce, wink, isConnected);
 
+  if(mochi.isAutoClickActive) {
+    performMouseClick();
+  }
+
   // 5. Routine Automatica (30 sec)
   if (mochi.timeForAction()) {
     mochi.recharge();
-    performMouseRoutine();
+    if(!mochi.isAutoClickActive)
+      performMouseRoutine();
     mochi.resetTimer();
   }
 }

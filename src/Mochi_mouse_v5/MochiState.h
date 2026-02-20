@@ -32,6 +32,8 @@ public:
   char bubbleType = '!'; // '!' o '?'
   unsigned long bubbleShowTime = 0;
 
+  bool isAutoClickActive = false;
+
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;
 
@@ -141,10 +143,14 @@ public:
       isDying = true;
       return;
     } else if (cmd == "GROW") {
-       growUp();
-       return; 
-    } else if (cmd = "prev") {} 
-    else if (cmd = "next") {}
+      growUp();
+      return; 
+    } else if (cmd == "prev") {
+      toggleAutoclick();
+    } 
+    else if (cmd == "next") {
+      toggleAutoclick();
+    }
 
     if (hunger > MAX_VAL) hunger = MAX_VAL;
     if (happy > MAX_VAL) happy = MAX_VAL;
@@ -196,6 +202,11 @@ public:
 
   void resetTimer() {
     lastActionTime = millis();
+  }
+
+  void toggleAutoclick() {
+    isAutoClickActive = !isAutoClickActive;
+    isBubbleVisible = isAutoClickActive;
   }
 
   void growUp() {
