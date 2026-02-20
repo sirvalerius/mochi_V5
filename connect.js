@@ -48,9 +48,7 @@ btnCloseSettings.onclick = closeSettings;
 settingsBackdrop.onclick = closeSettings;
 
 btnSaveSettings.onclick = () => {
-    localStorage.setItem('selectedTimezone', tzSelector.value);
-    closeSettings();
-    if (mochiCharacteristic) syncMochiTime();
+    saveAndUploadSettings();
 };
 
 // 3. API Timezones & Sync
@@ -164,6 +162,7 @@ async function downloadSettings() {
     // Aggiorna la UI (es. il selettore fuso orario)
     if(mochiSettings.timezone) {
         tzSelector.value = mochiSettings.timezone;
+		localStorage.setItem('selectedTimezone', mochiSettings.timezone);
     }
 }
 
@@ -203,6 +202,10 @@ async function saveAndUploadSettings() {
     
     console.log("Impostazioni inviate al Mochi!");
     closeSettings(); // Chiudi la sidebar
+	
+	if (mochiCharacteristic) {
+        await syncMochiTime(); // <-- RIGA AGGIUNTA
+    }
 }
 
 // 5. Event Listeners
