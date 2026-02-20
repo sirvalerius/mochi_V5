@@ -46,7 +46,8 @@ public:
 
   void begin() {
     lastActionTime = millis();
-    loadState(); // Chiamata qui, quando l'hardware è pronto
+    loadState();    // Loads hunger, happyness, etc
+    loadSettings(); // Loads Json Settings
   }
 
   // --- LOGICA MEMORIA ---
