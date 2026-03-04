@@ -144,6 +144,8 @@ void setup() {
   Mouse.begin();
 
   // Inizializzazione hardware (LGFX)
+  pinMode(PIN_BL, OUTPUT);
+  digitalWrite(PIN_BL, HIGH);
   display.init();
   canvas.createSprite(display.width(), display.height());
 
