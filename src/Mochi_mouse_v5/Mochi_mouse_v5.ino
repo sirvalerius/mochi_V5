@@ -144,9 +144,10 @@ void setup() {
   Mouse.begin();
 
   // Inizializzazione hardware (LGFX)
-  pinMode(PIN_BL, OUTPUT);
-  digitalWrite(PIN_BL, HIGH);
   display.init();
+  display.setRotation(1);
+  pinMode(PIN_BL, OUTPUT); 
+  digitalWrite(PIN_BL, HIGH); 
   canvas.createSprite(display.width(), display.height());
 
   // Inizializzazione Stato e View
@@ -165,6 +166,8 @@ void setup() {
   
   ble = new MochiBLE(&mochi, &statusLed, "Mochi-01");
   ble->begin();
+
+  mochi.resetTimer();
 }
 
 void loop() {
