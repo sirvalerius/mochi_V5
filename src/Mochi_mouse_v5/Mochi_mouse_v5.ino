@@ -6,7 +6,7 @@
 #include "DisplayDriver.h"
 #include "MochiState.h"
 #include "MochiView.h"
-//#include "MochiServer.h" 
+#include "MochiServer.h" 
 #include "MochiBLE.h"
 
 // --- OGGETTI GLOBALI ---
@@ -16,19 +16,126 @@ USBHIDMouse Mouse;
 
 MochiState mochi;
 MochiView* view;
-//MochiServer* webServer; // Puntatore al server
+MochiServer* webServer; 
 MochiBLE* ble;
 
+// Inizializzazione UNICA del LED
 Adafruit_NeoPixel statusLed(NUM_PIXELS, PIN_RGB, NEO_GRB + NEO_KHZ800);
 
-void avantiPresentazione() {
-  // Simula il tasto "Avanti" del mouse (Mouse 5)
-  Mouse.click(0x10); 
+// --- MACCHINA A STATI PER LE ANIMAZIONI ---
+enum SystemState {
+  STATE_NORMAL,         
+  STATE_JUMPING,        
+  STATE_MOVING_MOUSE,   
+  STATE_DYING,          
+  STATE_DEAD_PAUSE,     
+  STATE_GROWING,        
+  STATE_GROWING_FLASH   
+};
+
+SystemState sysState = STATE_NORMAL;
+unsigned long animStartTime = 0;
+int animStep = 0;
+float animLx = 40.0, animLy = 0.0;
+
+// --- FUNZIONI DI UTILITA' ---
+void avantiPresentazione() { Mouse.click(0x10); }
+void indietroPresentazione() { Mouse.click(0x08); }
+
+void performMouseClick() {
+  // Esempio base di autoclicker non bloccante
+  Mouse.click(MOUSE_LEFT);
 }
 
-void indietroPresentazione() {
-  // Simula il tasto "Indietro" del mouse (Mouse 4)
-  Mouse.click(0x08);
+// --- GESTORE ANIMAZIONI (FSM) ---
+void handleAnimations(unsigned long now) {
+  if (sysState == STATE_NORMAL) return;
+
+  // 1. SALTI DI GIOIA
+  if (sysState == STATE_JUMPING) {
+    if (now - animStartTime >= 5) { 
+      animStartTime = now;
+      int i = (animStep % 18) * 10; 
+      float jumpOffset = -abs(sin(i * M_PI / 180.0)) * 45;
+      view->render(mochi, (int)jumpOffset, true, true);
+      
+      animStep++;
+      if (animStep >= 36) { 
+        sysState = STATE_MOVING_MOUSE; 
+        animStep = 0;
+        animLx = 40; animLy = 0;
+      }
+    }
+  } 
+  // 2. MOVIMENTO DEL MOUSE
+  else if (sysState == STATE_MOVING_MOUSE) {
+    if (now - animStartTime >= 8) { 
+      animStartTime = now;
+      int i = animStep * 10;
+      float rad = i * M_PI / 180.0;
+      float nx = 40.0 * cos(rad); 
+      float ny = 40.0 * sin(rad);
+      Mouse.move((int)(nx - animLx), (int)(ny - animLy));
+      animLx = nx; animLy = ny;
+      
+      animStep++;
+      if (animStep > 36) { 
+        sysState = STATE_NORMAL; 
+        mochi.resetTimer();
+      }
+    }
+  }
+  // 3. ANIMAZIONE MORTE
+  else if (sysState == STATE_DYING) {
+    if (now - animStartTime >= 20) { 
+      animStartTime = now;
+      int i = animStep * 3;
+      int trembleX = (int)(sin(i / 8.0) * 6);
+      int offsetY = -i;
+      view->render(mochi, offsetY + trembleX, false, false);
+      
+      animStep++;
+      if (i >= 220) { 
+        mochi.finalizeDeath(); 
+        canvas.fillScreen(K_WHITE);
+        canvas.pushSprite(0,0);
+        sysState = STATE_DEAD_PAUSE; 
+        animStartTime = now;
+      }
+    }
+  }
+  // 4. PAUSA BIANCA POST-MORTE
+  else if (sysState == STATE_DEAD_PAUSE) {
+    if (now - animStartTime >= 800) { 
+      mochi.resetTimer();
+      sysState = STATE_NORMAL; 
+    }
+  }
+  // 5. ANIMAZIONE CRESCITA
+  else if (sysState == STATE_GROWING) {
+    if (now - animStartTime >= 20) { 
+      animStartTime = now;
+      float t = (float)animStep / 120.0; 
+      // Assicurati che drawGrowthFrame esista in MochiView. Se usavi un altro metodo, aggiorna qui.
+      // view->drawGrowthFrame(t, mochi.currentAge, mochi.targetGrowthStage);
+      
+      animStep++;
+      if (animStep > 120) { 
+        canvas.fillScreen(K_WHITE);
+        canvas.pushSprite(0,0);
+        sysState = STATE_GROWING_FLASH; 
+        animStartTime = now;
+      }
+    }
+  }
+  // 6. FLASH BIANCO POST-CRESCITA
+  else if (sysState == STATE_GROWING_FLASH) {
+    if (now - animStartTime >= 300) { 
+      mochi.finalizeGrowth();
+      mochi.resetTimer();
+      sysState = STATE_NORMAL; 
+    }
+  }
 }
 
 void setup() {
@@ -36,165 +143,90 @@ void setup() {
   USB.begin();
   Mouse.begin();
 
+  // Inizializzazione hardware (LGFX)
+  display.init();
+  canvas.createSprite(display.width(), display.height());
+
+  // Inizializzazione Stato e View
+  mochi.begin();
+  view = new MochiView(&canvas);
+
+  // Inizializzazione LED Globale
   statusLed.begin();
   statusLed.setBrightness(50); 
-  statusLed.setPixelColor(0, statusLed.Color(0, 0, 0)); // Spegni all'inizio
+  statusLed.setPixelColor(0, statusLed.Color(0, 0, 0));
   statusLed.show();
 
-  mochi.begin();
-  mochi.loadSettings();
-
-  display.init();
-  display.setRotation(1);
-  pinMode(PIN_BL, OUTPUT); 
-  digitalWrite(PIN_BL, HIGH); 
-  
-  canvas.createSprite(320, 172);
-  
-  view = new MochiView(&canvas);
-  
-  // Avviamo il Server Web passando il puntatore allo stato
-  // webServer = new MochiServer(&mochi);
+  // Inizializzazione Rete (Passiamo il puntatore al LED!)
+  // webServer = new MochiServer(&mochi, &statusLed);
   // webServer->begin();
-
-  ble = new MochiBLE(&mochi, &statusLed); 
+  
+  ble = new MochiBLE(&mochi, &statusLed, "Mochi-01");
   ble->begin();
-
-  mochi.resetTimer();
-}
-
-void performMouseClick() {
-  Mouse.click();
-}
-
-void performMouseRoutine() {
-  // Salti di gioia
-  for(int j=0; j<2; j++) {
-    for(int i=0; i<180; i+=10) {
-      float jumpOffset = -abs(sin(i * M_PI / 180.0)) * 45;
-      view->render(mochi, (int)jumpOffset, true, true);
-      delay(5);
-    }
-  }
-
-  // Movimento Mouse
-  float r = 40.0;
-  float lx = 40, ly = 0;
-  for (int i = 0; i <= 360; i += 10) {
-    float rad = i * M_PI / 180.0;
-    float nx = r * cos(rad); float ny = r * sin(rad);
-    Mouse.move((int)(nx - lx), (int)(ny - ly));
-    lx = nx; ly = ny; 
-    delay(8);
-  }
-}
-
-void performDeathSequence() {
-  // L'animazione dura circa 2 secondi
-  for(int i = 0; i < 220; i += 3) {
-    // Calcola offset Y: sale progressivamente (-i)
-    // Aggiungiamo un tremolio orizzontale spettrale usando il seno
-    int trembleX = (int)(sin(i / 8.0) * 6); 
-    int offsetY = -i; // Sempre più in alto
-    
-    // Renderizza lo stato "isDying"
-    // Passiamo false per wink e connected perché è un fantasma
-    view->render(mochi, offsetY + trembleX, false, false); 
-    delay(20); // Pausa per fluidità
-  }
-
-  // Animazione finita, è fuori schermo.
-  // Ora eseguiamo il reset vero e proprio dei dati.
-  mochi.finalizeDeath();
-  
-  // Opzionale: un momento di "vuoto" prima della rinascita
-  canvas.fillScreen(K_WHITE);
-  canvas.pushSprite(0,0);
-  delay(800);
-  
-  // Reset del timer per non far scattare subito l'azione mouse
-  mochi.resetTimer();
-}
-
-// --- NUOVA ROUTINE DI ANIMAZIONE CRESCITA ---
-void performGrowthSequence() {
-  AgeStage from = mochi.currentAge;
-  AgeStage to = mochi.targetGrowthStage;
-
-  // Animazione di circa 2.5 secondi
-  int steps = 120;
-  for(int i = 0; i <= steps; i++) {
-    float t = (float)i / (float)steps; // Progresso da 0.0 a 1.0
-    
-    // Chiama la funzione speciale della vista
-    view->drawGrowthFrame(t, from, to);
-    delay(20);
-  }
-
-  // Flash bianco finale per "l'evoluzione"
-  canvas.fillScreen(K_WHITE);
-  canvas.pushSprite(0,0);
-  delay(300);
-
-  // Finalizza lo stato
-  mochi.finalizeGrowth();
-  mochi.resetTimer();
 }
 
 void loop() {
   unsigned long now = millis();
   bool isConnected = true;
 
-  // 1. GESTIONE WEB SERVER (Importante!)
-  // webServer->handle();
+  // 1. GESTIONE SERVER (Decommenta se usi WiFi)
+  // if (webServer) webServer->handle(); 
 
-  // --- CONTROLLO MORTE ---
-  // Se il server ha settato il flag isDying, fermiamo tutto ed eseguiamo l'animazione
-  if (mochi.isDying) {
-    performDeathSequence();
-    // Dopo l'animazione, il flag è false e mochi è resettato.
-    // Ritorniamo all'inizio del loop per ricominciare "puliti"
+  // 2. GESTIONE ANIMAZIONI (Uscita anticipata se in corso)
+  if (sysState != STATE_NORMAL) {
+    handleAnimations(now);
     return; 
   }
 
-  // --- CONTROLLO MORTE ---
+  // 3. INTERCETTAZIONE TRIGGER STATI SPECIALI
+  if (mochi.isDying) {
+    sysState = STATE_DYING;
+    animStep = 0;
+    animStartTime = now;
+    return;
+  }
+
   if (mochi.needsGrowthAnimation) {
-    performGrowthSequence();
+    sysState = STATE_GROWING;
+    animStep = 0;
+    animStartTime = now;
     return;
   } 
 
-  // 2. Aggiorna Logica
+  // 4. LOGICA STANDARD E AGGIORNAMENTO STATISTICHE
   mochi.updateDecay();
   
-  // Se l'utente ha premuto un tasto web, mostriamo il cuore
   if (mochi.lastCommand != "") {
-     // Se riceve un comando WiFi, forza l'attivazione immediata
      mochi.isHeartVisible = true;
      mochi.heartShowTime = millis();
-     //if (mochi.lastCommand == "prev") indietroPresentazione();
-     //else if (mochi.lastCommand == "next") avantiPresentazione();
-     mochi.lastCommand = ""; // Reset del comando dopo averlo processato
+     if (mochi.lastCommand == "prev") indietroPresentazione();
+     else if (mochi.lastCommand == "next") avantiPresentazione();
+     mochi.lastCommand = ""; 
   } else {
-     // Altrimenti, usa la logica casuale standard
      mochi.triggerHeart(); 
   }
 
-  // 3. Calcola Animazione
+  // Calcolo Animazione Base (Respiro/Rimbalzo)
   float bounce = -abs(sin(fmod(now / 1000.0 * 2.5, M_PI))) * 12;
   bool wink = (fmod(now, 5000) < 200);
 
-  // 4. Disegna
+  // Disegno a schermo
   view->render(mochi, (int)bounce, wink, isConnected);
 
+  // Autoclicker
   if(mochi.isAutoClickActive) {
     performMouseClick();
   }
 
-  // 5. Routine Automatica (30 sec)
+  // Routine Automatica (Jiggler/Salti)
   if (mochi.timeForAction()) {
     mochi.recharge();
-    if(!mochi.isAutoClickActive)
-      performMouseRoutine();
-    mochi.resetTimer();
+    if(!mochi.isAutoClickActive) {
+      sysState = STATE_JUMPING;
+      animStep = 0;
+      animStartTime = now;
+    } else {
+      mochi.resetTimer();
+    }
   }
 }

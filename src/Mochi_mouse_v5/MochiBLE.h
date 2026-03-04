@@ -77,10 +77,12 @@ private:
     BLECharacteristic* pCharacteristic = NULL;
     Adafruit_NeoPixel* ledPtr;
     MochiState* statePtr;
+    String deviceName;
 
 public:
-    MochiBLE(MochiState* s, Adafruit_NeoPixel* l) : statePtr(s), ledPtr(l) {}
-
+    MochiBLE(MochiState* s, Adafruit_NeoPixel* l, String name) 
+      : statePtr(s), ledPtr(l), deviceName(name) {}
+      
     void begin() {
         uint32_t chipId = 0;
         for(int i=0; i<17; i=i+8) { chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i; }
