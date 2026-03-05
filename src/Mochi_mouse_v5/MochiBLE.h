@@ -15,7 +15,7 @@ class MochiBLE {
 private:
     MochiState* mochi;
     Adafruit_NeoPixel* statusLed;
-    const char* bleName;
+    String bleName;
     BLEServer* pServer;
 
 public:

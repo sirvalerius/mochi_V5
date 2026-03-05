@@ -69,7 +69,7 @@ MochiBLE::MochiBLE(MochiState* m, Adafruit_NeoPixel* led) {
 
 void MochiBLE::begin() {
     Serial.println("Inizializzazione BLE...");
-    BLEDevice::init(bleName);
+    BLEDevice::init(bleName.c_str());
 
     // Crea il Server e assegna le Callback passandogli il LED
     pServer = BLEDevice::createServer();
