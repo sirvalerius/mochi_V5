@@ -31,10 +31,9 @@ jobs:
           arduino-cli lib install "LovyanGFX"
           arduino-cli lib install "Adafruit NeoPixel"
 
-      # --- CORREZIONE QUI SOTTO (rimosso il doppio trattino) ---
       - name: Set Version Number
         run: |
-          BASE_VERSION="0.3.0"
+          BASE_VERSION="0.3.1"
           # Usa il run_number per l'incremento automatico
           PATCH=$(( ${{ github.run_number }} ))
           
