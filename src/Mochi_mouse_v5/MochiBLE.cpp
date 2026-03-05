@@ -33,24 +33,19 @@ public:
 class MyCallbacks: public BLECharacteristicCallbacks {
     MochiState* mochi;
 public:
-    // Il costruttore riceve lo stato del Mochi per inviargli comandi
     MyCallbacks(MochiState* m) : mochi(m) {}
 
     void onWrite(BLECharacteristic *pCharacteristic) {
-        std::string rxValue = pCharacteristic->getValue();
+        // Ora getValue() restituisce direttamente una String di Arduino!
+        String rxValue = pCharacteristic->getValue();
         
         if (rxValue.length() > 0) {
-            String command = "";
-            for (int i = 0; i < rxValue.length(); i++) {
-                command += rxValue[i];
-            }
-            
             // Passa il comando allo stato centrale
             if (mochi) {
-                mochi->lastCommand = command;
+                mochi->lastCommand = rxValue;
             }
             Serial.print("Ricevuto via BLE: ");
-            Serial.println(command);
+            Serial.println(rxValue);
         }
     }
 };
