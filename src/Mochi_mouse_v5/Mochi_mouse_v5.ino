@@ -49,92 +49,52 @@ void performMouseClick() {
 
 // --- GESTORE ANIMAZIONI (FSM) ---
 void handleAnimations(unsigned long now) {
-  if (sysState == STATE_NORMAL) return;
+  
+  // --- ANIMAZIONE MORTE (3 Secondi) ---
+  if (sysState == STATE_DYING) {
+    float progress = (float)(now - animStartTime) / 3000.0; 
+    if (progress >= 1.0) {
+      mochi.finalizeDeath();
+      sysState = STATE_DEAD_PAUSE;
+      animStartTime = now;
+      return;
+    }
+    int offsetY = progress * 50; // Il fantasma sale
+    int trembleX = (random(5) - 2) * (1.0 - progress); // Trema sempre meno
+    view->render(mochi, offsetY + trembleX, now / 200.0f, false, false);
 
-  // 1. SALTI DI GIOIA
-  if (sysState == STATE_JUMPING) {
-    if (now - animStartTime >= 5) { 
+  // --- PAUSA DA MORTO (2 Secondi) ---
+  } else if (sysState == STATE_DEAD_PAUSE) {
+    float progress = (float)(now - animStartTime) / 2000.0;
+    if (progress >= 1.0) {
+      sysState = STATE_NORMAL;
+      return;
+    }
+    // Ora che è tornato uovo, lo disegniamo fermo
+    view->render(mochi, 0, now / 200.0f, false, false);
+
+  // --- ANIMAZIONE CRESCITA/SCHIUSA (2 Secondi) ---
+  } else if (sysState == STATE_GROWING) {
+    float progress = (float)(now - animStartTime) / 2000.0; 
+    if (progress >= 1.0) {
+      sysState = STATE_GROWING_FLASH;
       animStartTime = now;
-      int i = (animStep % 18) * 10; 
-      float jumpOffset = -abs(sin(i * M_PI / 180.0)) * 45;
-      view->render(mochi, (int)jumpOffset, now / 200.0f, true, true);
-      
-      animStep++;
-      if (animStep >= 36) { 
-        sysState = STATE_MOVING_MOUSE; 
-        animStep = 0;
-        animLx = 40; animLy = 0;
-      }
+      return;
     }
-  } 
-  // 2. MOVIMENTO DEL MOUSE
-  else if (sysState == STATE_MOVING_MOUSE) {
-    if (now - animStartTime >= 8) { 
-      animStartTime = now;
-      int i = animStep * 10;
-      float rad = i * M_PI / 180.0;
-      float nx = 40.0 * cos(rad); 
-      float ny = 40.0 * sin(rad);
-      Mouse.move((int)(nx - animLx), (int)(ny - animLy));
-      animLx = nx; animLy = ny;
-      
-      animStep++;
-      if (animStep > 36) { 
-        sysState = STATE_NORMAL; 
-        mochi.resetTimer();
-      }
-    }
-  }
-  // 3. ANIMAZIONE MORTE
-  else if (sysState == STATE_DYING) {
-    if (now - animStartTime >= 20) { 
-      animStartTime = now;
-      int i = animStep * 3;
-      int trembleX = (int)(sin(i / 8.0) * 6);
-      int offsetY = -i;
-      view->render(mochi, offsetY + trembleX, now / 200.0f, false, false);
-      
-      animStep++;
-      if (i >= 220) { 
-        mochi.finalizeDeath(); 
-        canvas.fillScreen(K_WHITE);
-        canvas.pushSprite(0,0);
-        sysState = STATE_DEAD_PAUSE; 
-        animStartTime = now;
-      }
-    }
-  }
-  // 4. PAUSA BIANCA POST-MORTE
-  else if (sysState == STATE_DEAD_PAUSE) {
-    if (now - animStartTime >= 800) { 
-      mochi.resetTimer();
-      sysState = STATE_NORMAL; 
-    }
-  }
-  // 5. ANIMAZIONE CRESCITA
-  else if (sysState == STATE_GROWING) {
-    if (now - animStartTime >= 20) { 
-      animStartTime = now;
-      float t = (float)animStep / 120.0; 
-      // Assicurati che drawGrowthFrame esista in MochiView. Se usavi un altro metodo, aggiorna qui.
-      // view->drawGrowthFrame(t, mochi.currentAge, mochi.targetGrowthStage);
-      
-      animStep++;
-      if (animStep > 120) { 
-        canvas.fillScreen(K_WHITE);
-        canvas.pushSprite(0,0);
-        sysState = STATE_GROWING_FLASH; 
-        animStartTime = now;
-      }
-    }
-  }
-  // 6. FLASH BIANCO POST-CRESCITA
-  else if (sysState == STATE_GROWING_FLASH) {
-    if (now - animStartTime >= 300) { 
+    // ASSICURATI CHE QUESTA RIGA CI SIA: È quella che disegna i frame!
+    view->drawGrowthFrame(progress, mochi.currentAge, mochi.targetGrowthStage);
+
+  // --- FLASH LUMINOSO FINALE (0.5 Secondi) ---
+  } else if (sysState == STATE_GROWING_FLASH) {
+    float flashProgress = (float)(now - animStartTime) / 500.0;
+    if (flashProgress >= 1.0) {
       mochi.finalizeGrowth();
-      mochi.resetTimer();
-      sysState = STATE_NORMAL; 
+      sysState = STATE_NORMAL;
+      return;
     }
+    // Riempie lo schermo di bianco
+    canvas.fillScreen(K_WHITE);
+    canvas.pushSprite(0, 0);
   }
 }
 
@@ -177,6 +137,7 @@ void loop() {
   // 2. GESTIONE ANIMAZIONI (Uscita anticipata se in corso)
   if (sysState != STATE_NORMAL) {
     handleAnimations(now);
+    delay(15);
     return; 
   }
 
