@@ -164,7 +164,7 @@ void setup() {
   // webServer = new MochiServer(&mochi, &statusLed);
   // webServer->begin();
   
-  ble = new MochiBLE(&mochi, &statusLed, "Mochi-01");
+  ble = new MochiBLE(&mochi, &statusLed);
   ble->begin();
 
   mochi.resetTimer();

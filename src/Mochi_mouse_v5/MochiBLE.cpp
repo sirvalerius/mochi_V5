@@ -50,11 +50,21 @@ public:
     }
 };
 
-MochiBLE::MochiBLE(MochiState* m, Adafruit_NeoPixel* led, const char* name) {
+MochiBLE::MochiBLE(MochiState* m, Adafruit_NeoPixel* led) {
     mochi = m;
     statusLed = led;
-    bleName = name;
     pServer = nullptr;
+
+    // --- GENERAZIONE NOME DINAMICO (Tuo metodo originale) ---
+    uint32_t chipId = 0;
+    for(int i=0; i<17; i=i+8) { 
+        chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i; 
+    }
+    String deviceName = "Mochi-" + String(chipId, HEX);
+    deviceName.toUpperCase();
+    
+    // Salviamo il nome calcolato nella variabile di classe
+    bleName = deviceName;
 }
 
 void MochiBLE::begin() {
