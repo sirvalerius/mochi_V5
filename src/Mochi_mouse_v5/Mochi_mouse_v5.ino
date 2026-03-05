@@ -57,7 +57,7 @@ void handleAnimations(unsigned long now) {
       animStartTime = now;
       int i = (animStep % 18) * 10; 
       float jumpOffset = -abs(sin(i * M_PI / 180.0)) * 45;
-      view->render(mochi, (int)jumpOffset, true, true);
+      view->render(mochi, (int)jumpOffset, now / 200.0f, true, true);
       
       animStep++;
       if (animStep >= 36) { 
@@ -92,7 +92,7 @@ void handleAnimations(unsigned long now) {
       int i = animStep * 3;
       int trembleX = (int)(sin(i / 8.0) * 6);
       int offsetY = -i;
-      view->render(mochi, offsetY + trembleX, false, false);
+      view->render(mochi, offsetY + trembleX, now / 200.0f, false, false);
       
       animStep++;
       if (i >= 220) { 
@@ -173,9 +173,6 @@ void setup() {
 void loop() {
   unsigned long now = millis();
   bool isConnected = true;
-
-  // 1. GESTIONE SERVER (Decommenta se usi WiFi)
-  // if (webServer) webServer->handle(); 
 
   // 2. GESTIONE ANIMAZIONI (Uscita anticipata se in corso)
   if (sysState != STATE_NORMAL) {
