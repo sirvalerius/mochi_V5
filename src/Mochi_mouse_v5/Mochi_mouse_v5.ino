@@ -62,8 +62,14 @@ void handleAnimations(unsigned long now) {
   // --- ANIMAZIONE MOUSE ---
   } else if (sysState == STATE_MOVING_MOUSE) {
     if (millis() - animStartTime > 500) { sysState = STATE_NORMAL; return; }
-    animLx += (random(5) - 2); animLy += (random(5) - 2);
-    Mouse.move((int)(animLx/10), (int)(animLy/10));
+
+    static unsigned long lastMouseTime = 0;
+    if (millis() - lastMouseTime >= 10) {
+      animLx += (random(5) - 2); 
+      animLy += (random(5) - 2);
+      Mouse.move((int)(animLx/10), (int)(animLy/10));
+      lastMouseTime = millis();
+    }
     view->render(mochi, 0, now / 200.0f, false, isConn);
 
   // --- ANIMAZIONE MORTE (3 Secondi) ---
