@@ -5,6 +5,7 @@
 #include "Settings.h"
 
 enum AgeStage {
+  EGG,
   BABY,
   ADULT,
   ELDER
@@ -37,7 +38,7 @@ public:
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;
 
-  AgeStage currentAge = ADULT; // Partiamo da adulto come default
+  AgeStage currentAge = EGG; // Partiamo da adulto come default
   bool needsGrowthAnimation = false; // Variabile per segnalare al main che serve una transizione
   AgeStage targetGrowthStage;
 
@@ -60,6 +61,7 @@ public:
 
   // --- LOGICA GIOCO ---
   void updateDecay();
+  void checkLifecycle();
   void applyCommand(String cmd);
   void recharge();
   
