@@ -200,6 +200,7 @@ void loop() {
 
   // 4. LOGICA STANDARD E AGGIORNAMENTO STATISTICHE
   mochi.updateDecay();
+  mochi.checkLifecycle();
   
   if (mochi.lastCommand != "") {
      mochi.isHeartVisible = true;
@@ -214,9 +215,10 @@ void loop() {
   // Calcolo Animazione Base (Respiro/Rimbalzo)
   float bounce = -abs(sin(fmod(now / 1000.0 * 2.5, M_PI))) * 12;
   bool wink = (fmod(now, 5000) < 200);
+  float animAngle = now / 200.0;
 
   // Disegno a schermo
-  view->render(mochi, (int)bounce, wink, isConnected);
+  view->render(mochi, (int)bounce, animAngle, wink, isConnected);
 
   // Autoclicker
   if(mochi.isAutoClickActive) {

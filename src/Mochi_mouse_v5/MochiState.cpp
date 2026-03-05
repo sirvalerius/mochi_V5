@@ -96,10 +96,55 @@ void MochiState::updateDecay() {
   happy -= HAPPY_DECAY;
   if (hunger < 0) hunger = 0;
   if (happy < 0) happy = 0;
+
+  if (currentAge != EGG) {
+    hunger -= HUNGER_DECAY;
+    happy -= HAPPY_DECAY;
+    if (hunger < 0) hunger = 0;
+    if (happy < 0) happy = 0;
+  }
+  
+  // 2. Pulizia dell'ultimo comando
+  if (lastCommand != "" && millis() - commandFeedbackTime > 1000) {
+    lastCommand = "";
+  }
   
   if (lastCommand != "" && millis() - commandFeedbackTime > 1000) {
     lastCommand = "";
   }
+}
+
+void MochiState::checkLifecycle() {
+    time_t now = getNow();
+    if (now == 0 || needsGrowthAnimation || isDying) return; // Se l'ora non è sincro o sta già animando, esci
+
+    struct tm * timeinfo;
+    timeinfo = gmtime(&now); // Converte il timestamp in ore/giorni
+    
+    int day = timeinfo->tm_wday; // 0 = Domenica, 1 = Lunedì, 2 = Martedì... 5 = Venerdì
+    int hour = timeinfo->tm_hour;
+    
+    // Lunedì (1) ore 10: Uovo -> Baby
+    if (currentAge == EGG && day == 1 && hour >= 10) {
+        targetGrowthStage = BABY;
+        needsGrowthAnimation = true;
+    } 
+    // Martedì (2) ore 18: Baby -> Adulto
+    else if (currentAge == BABY && day == 2 && hour >= 18) {
+        targetGrowthStage = ADULT;
+        needsGrowthAnimation = true;
+    }
+    // Giovedì (4) ore 18: Adulto -> Vecchio
+    else if (currentAge == ADULT && day == 4 && hour >= 18) {
+        targetGrowthStage = ELDER;
+        needsGrowthAnimation = true;
+    }
+    // Venerdì (5) ore 18: Vecchio -> Muore / Torna Uovo
+    else if (currentAge == ELDER && day == 5 && hour >= 18) {
+        // Puoi scegliere se farlo morire (isDying = true) o farlo tornare direttamente uovo
+        isDying = true; 
+        targetGrowthStage = EGG; 
+    }
 }
 
 void MochiState::applyCommand(String cmd) {
@@ -174,17 +219,23 @@ void MochiState::toggleAutoclick() {
 }
 
 void MochiState::growUp() {
-  if (currentAge == BABY) {
+  // Aggiunto il salto UOVO -> CUCCIOLO
+  if (currentAge == EGG) {
+    targetGrowthStage = BABY;
+    needsGrowthAnimation = true;
+  } 
+  else if (currentAge == BABY) {
     targetGrowthStage = ADULT;
     needsGrowthAnimation = true;
-  } else if (currentAge == ADULT) {
+  } 
+  else if (currentAge == ADULT) {
     targetGrowthStage = ELDER;
     needsGrowthAnimation = true;
-  } else if (currentAge == ELDER) {
+  } 
+  else if (currentAge == ELDER) {
     isDying = true;
-    targetGrowthStage = BABY;
+    targetGrowthStage = EGG; // Dopo la morte diventerà un uovo
   }
-  // Se è ELDER non cresce più
 }
 
 void MochiState::finalizeGrowth() {
@@ -195,9 +246,11 @@ void MochiState::finalizeGrowth() {
 
 void MochiState::finalizeDeath() {
   killMochi(); // Svuota la flash
-  hunger = 10.0; 
-  happy = 10.0;
-  currentAge = BABY;
+ 
+  hunger = 50.0; 
+  happy = 50.0;
+  currentAge = EGG; 
+  
   saveState(); // Salva i valori di rinascita
   isDying = false; // Finito! Torna normale
 }

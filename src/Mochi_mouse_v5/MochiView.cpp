@@ -6,30 +6,44 @@
 
 MochiView::MochiView(LGFX_Sprite* spritePtr) {
   canvas = spritePtr;
+  eggTempSprite = nullptr; // Inizialmente vuoto
   // Inizializza le variabili definite nel file .h
   bgCalculated = false;
   currentBgTop = K_BG_TOP;
   currentBgBottom = K_BG_BOTTOM;
 }
 
-void MochiView::render(MochiState &state, int yOff, bool wink, bool connected) {
+MochiView::~MochiView() {
+  // Pulisce la memoria se lo sprite dell'uovo è stato creato
+  if (eggTempSprite) {
+    eggTempSprite->deleteSprite();
+    delete eggTempSprite;
+  }
+}
+
+void MochiView::render(MochiState &state, int yOff, float animAngle, bool wink, bool connected) {
   drawBackground();
+
   if (state.isDying) {
     drawGhostMochi(yOff); 
   } else {
     drawUI(state, connected);
     
-    // Determina parametri in base all'età corrente
-    int w = 100, h = 80; // Default Adulto
-    uint16_t color = K_WHITE;
-    
-    if (state.currentAge == BABY) {
-      w = 70; h = 55; 
-    } else if (state.currentAge == ELDER) {
-      color = K_ELDER_BODY;
+    // Se è un uovo, disegniamo solo l'uovo saltando occhi, rughe e bocca
+    if (state.currentAge == EGG) {
+        drawEgg(160, 86, animAngle);
+    } 
+    // Altrimenti procediamo con il Mochi normale
+    else {
+        int w = 100, h = 80; // Default Adulto
+        uint16_t color = K_WHITE;
+        
+        if (state.currentAge == BABY) {
+          w = 70; h = 55; 
+        } else if (state.currentAge == ELDER) { color = K_ELDER_BODY; }
+        
+        drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
     }
-    // Usa la nuova funzione adattiva
-    drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
   }
 
   canvas->pushSprite(0, 0);
@@ -43,36 +57,57 @@ void MochiView::setBackgroundGradient(uint16_t topHex, uint16_t botHex) {
 
 void MochiView::drawGrowthFrame(float t, AgeStage from, AgeStage to) {
   drawBackground();
-  
   int cx = 160; int cy = 86;
+
+  // --- 1. SCHIUSA DELL'UOVO ---
+  if (from == EGG && to == BABY) {
+      // Tremolio violento che aumenta verso la fine
+      float shakeAngle = sin(t * 30.0f) * (t * 15.0f); 
+
+      if (t < 0.8) {
+          // L'uovo si crepa gradualmente (passiamo t come crackProgress)
+          drawEgg(cx, cy, shakeAngle, t);
+      } else {
+          // Esplosione di luce bianca finale
+          drawEgg(cx, cy, shakeAngle, 1.0f); 
+          int flashRadius = (t - 0.8f) * 5.0f * 150.0f; // Il cerchio si espande velocemente
+          canvas->fillCircle(cx, cy + 40, flashRadius, K_WHITE);
+          
+          // Proprio all'ultimo istante, disegna il baby Mochi dentro la luce
+          if (t > 0.9) {
+              drawAdaptiveMochi(cx, cy, 70, 55, K_WHITE, BABY, false, false, false, '.');
+          }
+      }
+      canvas->pushSprite(0, 0);
+      return;
+  }
+
+  // --- 2. CRESCITA NORMALE (Baby -> Adult -> Elder) ---
   int w_start, h_start, w_end, h_end;
   uint16_t c_start, c_end;
 
-  // Configura parametri di partenza e arrivo
   if (from == BABY && to == ADULT) {
     w_start = 70; h_start = 55; c_start = K_WHITE;
     w_end = 100; h_end = 80; c_end = K_WHITE;
   } else if (from == ADULT && to == ELDER) {
     w_start = 100; h_start = 80; c_start = K_WHITE;
     w_end = 100; h_end = 80; c_end = K_ELDER_BODY;
+  } else {
+    // Sicurezza: se ci sono altre transizioni impreviste, usa default
+    w_start = 100; h_start = 80; c_start = K_WHITE;
+    w_end = 100; h_end = 80; c_end = K_WHITE;
   }
 
-  // Interpolazione lineare (Lerp)
   int current_w = w_start + (int)((w_end - w_start) * t);
   int current_h = h_start + (int)((h_end - h_start) * t);
-  
-  // Interpolazione colore (semplificata, blend RGB sarebbe meglio ma complesso)
   uint16_t current_color = (t < 0.5) ? c_start : c_end;
 
-  // Effetto "tremolio" ed "espansione" durante la crescita
-  float expansion = sin(t * M_PI) * 10; // Si espande al centro dell'animazione
+  float expansion = sin(t * M_PI) * 10; 
   current_w += expansion; current_h += expansion / 2;
   int jitter = (random(3) - 1) * 2;
 
-  // Durante la transizione usiamo lo stadio di arrivo per i dettagli
   drawAdaptiveMochi(cx + jitter, cy, current_w, current_h, current_color, to, false, false, false, '.');
 
-  // Effetto "luce" o "fumo" intorno
   if (t > 0.2 && t < 0.8) {
      canvas->drawCircle(cx, cy, (current_w/2) + 15 + expansion, K_PROG_FG);
   }
@@ -188,6 +223,61 @@ void MochiView::drawGhostMochi(int yOff) {
   // Occhio DX
   canvas->drawLine(cx + 15, cy - 15, cx + 35, cy + 5, K_GHOST_EYE);
   canvas->drawLine(cx + 35, cy - 15, cx + 15, cy + 5, K_GHOST_EYE);
+}
+
+void MochiView::drawEgg(int cx, int cy, float animAngle, float crackProgress) {
+  int rX = 35; int rY = 45;
+  int eggW = (rX * 2) + 10; 
+  int eggH = (rY * 2) + 10;
+  int anchorY = cy + rY; 
+
+  // Se l'uovo è sano oscilla morbidamente, se si sta rompendo trema violentemente
+  float wobbleDeg = (crackProgress > 0) ? animAngle : sin(animAngle) * 6.0f;
+
+  // Variabile statica per ricordare a che punto era la crepa nel frame precedente
+  static float lastCrack = -1.0f;
+
+  // Ridisegniamo lo sprite solo se non esiste o se la crepa sta avanzando
+  if (eggTempSprite == nullptr || crackProgress != lastCrack) {
+      if (eggTempSprite == nullptr) {
+          eggTempSprite = new LGFX_Sprite(canvas);
+          eggTempSprite->createSprite(eggW, eggH);
+      }
+      lastCrack = crackProgress;
+      
+      eggTempSprite->fillScreen(0xF81F); // Sfondo trasparente
+      int scx = eggW / 2;
+      int scy = eggH / 2;
+      
+      // Disegna l'uovo base
+      eggTempSprite->fillEllipse(scx, scy, rX, rY, K_WHITE);
+      eggTempSprite->fillCircle(scx - 15, scy + 10, 5, K_PROG_BG);
+      eggTempSprite->fillCircle(scx + 12, scy - 15, 7, K_PROG_BG);
+      eggTempSprite->fillCircle(scx + 18, scy + 20, 3, K_PROG_BG);
+      eggTempSprite->fillCircle(scx - 8, scy - 25, 4, K_PROG_BG);
+
+      // --- DISEGNO DELLA FRATTURA (Avanza col tempo) ---
+      if (crackProgress > 0.1f) {
+          int topY = scy - rY + 5;
+          eggTempSprite->drawLine(scx, topY, scx - 8, topY + 15, K_WRINKLE);
+          eggTempSprite->drawLine(scx+1, topY, scx - 7, topY + 15, K_WRINKLE); // Per spessore
+      }
+      if (crackProgress > 0.4f) {
+          int topY = scy - rY + 5;
+          eggTempSprite->drawLine(scx - 8, topY + 15, scx + 8, topY + 30, K_WRINKLE);
+          eggTempSprite->drawLine(scx - 7, topY + 15, scx + 9, topY + 30, K_WRINKLE);
+      }
+      if (crackProgress > 0.7f) {
+          int topY = scy - rY + 5;
+          eggTempSprite->drawLine(scx + 8, topY + 30, scx - 4, topY + 45, K_WRINKLE);
+          eggTempSprite->drawLine(scx + 9, topY + 30, scx - 3, topY + 45, K_WRINKLE);
+      }
+
+      eggTempSprite->setPivot(scx, scy + rY);
+  }
+  // Ombra a terra e disegno Sprite ruotato
+  canvas->fillEllipse(cx, anchorY - 5, rX - 5, 8, K_PROG_BG);
+  eggTempSprite->pushRotateZO(canvas, cx, anchorY, wobbleDeg, 1.0f, 1.0f, 0xF81F);
 }
 
 void MochiView::drawWrinkles(int cx, int eyeY, int spacingX) {
