@@ -15,6 +15,8 @@ class MochiState {
 private:
   Preferences prefs; // Oggetto per gestire i salvataggi
 
+  int evolutionCooldown = 60000;
+
   time_t baseUnixTime = 0;       // Il tempo Unix ricevuto via BLE/WiFi
   unsigned long syncMillis = 0;  // Il valore di millis() al momento della sicro
 
@@ -37,6 +39,8 @@ public:
 
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;
+
+  unsigned long lastEvolutionTime = 0;
 
   AgeStage currentAge = EGG; // Partiamo da adulto come default
   bool needsGrowthAnimation = false; // Variabile per segnalare al main che serve una transizione

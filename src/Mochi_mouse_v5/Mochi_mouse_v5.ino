@@ -59,7 +59,7 @@ void handleAnimations(unsigned long now) {
       animStartTime = now;
       return;
     }
-    int offsetY = progress * 50; // Il fantasma sale
+    int offsetY = -progress * 50; // Il fantasma sale
     int trembleX = (random(5) - 2) * (1.0 - progress); // Trema sempre meno
     view->render(mochi, offsetY + trembleX, now / 200.0f, false, false);
 
