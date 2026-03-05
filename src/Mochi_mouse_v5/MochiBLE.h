@@ -19,7 +19,7 @@ private:
     BLEServer* pServer;
 
 public:
-    MochiBLE(MochiState* m, Adafruit_NeoPixel* led, const char* name = "Mochi-01");
+    MochiBLE(MochiState* m, Adafruit_NeoPixel* led);
     void begin();
 };
 
