@@ -6,7 +6,7 @@
 #include "DisplayDriver.h"
 #include "MochiState.h"
 #include "MochiView.h"
-#include "MochiServer.h" 
+// #include "MochiServer.h" 
 #include "MochiBLE.h"
 
 // --- OGGETTI GLOBALI ---
@@ -16,7 +16,7 @@ USBHIDMouse Mouse;
 
 MochiState mochi;
 MochiView* view;
-MochiServer* webServer; 
+// MochiServer* webServer; 
 MochiBLE* ble;
 
 // Inizializzazione UNICA del LED
