@@ -49,9 +49,25 @@ void performMouseClick() {
 
 // --- GESTORE ANIMAZIONI (FSM) ---
 void handleAnimations(unsigned long now) {
-  
+  bool isConn = ble->isConnected(); // Serve per il render
+
+  // --- ANIMAZIONE SALTO (I vecchi 5 minuti) ---
+  if (sysState == STATE_JUMPING) {
+    if (animStep == 0) { Mouse.move(0, -20); animStep++; }
+    else if (animStep == 1 && millis() - animStartTime > 100) { Mouse.move(0, 20); animStep++; }
+    else if (animStep == 2 && millis() - animStartTime > 200) { sysState = STATE_NORMAL; return; }
+    int jumpOffset = (animStep == 1) ? -15 : 0;
+    view->render(mochi, jumpOffset, now / 200.0f, true, isConn);
+
+  // --- ANIMAZIONE MOUSE ---
+  } else if (sysState == STATE_MOVING_MOUSE) {
+    if (millis() - animStartTime > 500) { sysState = STATE_NORMAL; return; }
+    animLx += (random(5) - 2); animLy += (random(5) - 2);
+    Mouse.move((int)(animLx/10), (int)(animLy/10));
+    view->render(mochi, 0, now / 200.0f, false, isConn);
+
   // --- ANIMAZIONE MORTE (3 Secondi) ---
-  if (sysState == STATE_DYING) {
+  } else if (sysState == STATE_DYING) {
     float progress = (float)(now - animStartTime) / 3000.0; 
     if (progress >= 1.0) {
       mochi.finalizeDeath();
@@ -59,9 +75,9 @@ void handleAnimations(unsigned long now) {
       animStartTime = now;
       return;
     }
-    int offsetY = -progress * 50; // Il fantasma sale
-    int trembleX = (random(5) - 2) * (1.0 - progress); // Trema sempre meno
-    view->render(mochi, offsetY + trembleX, now / 200.0f, false, false);
+    int offsetY = -(progress * 50); 
+    int trembleX = (random(5) - 2) * (1.0 - progress); 
+    view->render(mochi, offsetY + trembleX, now / 200.0f, false, isConn);
 
   // --- PAUSA DA MORTO (2 Secondi) ---
   } else if (sysState == STATE_DEAD_PAUSE) {
@@ -70,8 +86,7 @@ void handleAnimations(unsigned long now) {
       sysState = STATE_NORMAL;
       return;
     }
-    // Ora che è tornato uovo, lo disegniamo fermo
-    view->render(mochi, 0, now / 200.0f, false, false);
+    view->render(mochi, 0, now / 200.0f, false, isConn);
 
   // --- ANIMAZIONE CRESCITA/SCHIUSA (2 Secondi) ---
   } else if (sysState == STATE_GROWING) {
@@ -81,7 +96,6 @@ void handleAnimations(unsigned long now) {
       animStartTime = now;
       return;
     }
-    // ASSICURATI CHE QUESTA RIGA CI SIA: È quella che disegna i frame!
     view->drawGrowthFrame(progress, mochi.currentAge, mochi.targetGrowthStage);
 
   // --- FLASH LUMINOSO FINALE (0.5 Secondi) ---
@@ -92,7 +106,6 @@ void handleAnimations(unsigned long now) {
       sysState = STATE_NORMAL;
       return;
     }
-    // Riempie lo schermo di bianco
     canvas.fillScreen(K_WHITE);
     canvas.pushSprite(0, 0);
   }

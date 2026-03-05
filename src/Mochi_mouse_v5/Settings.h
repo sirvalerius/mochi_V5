@@ -48,6 +48,7 @@
 #define HUNGER_DECAY 0.0005
 #define HAPPY_DECAY  0.0003
 #define ACTION_INTERVAL 300000 // 5 minuti
+#define STATE_COOLDOWN  60000  // 1 minuto
 
 // --- RETE WIFI (Nuovo!) ---
 #define WIFI_SSID "Mochi_Net"

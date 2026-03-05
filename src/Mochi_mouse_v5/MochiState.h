@@ -15,7 +15,12 @@ class MochiState {
 private:
   Preferences prefs; // Oggetto per gestire i salvataggi
 
-  int evolutionCooldown = 60000;
+  int evolutionCooldown = STATE_COOLDOWN;
+
+  bool shouldHatch(int day, int hour);
+  bool shouldBecomeAdult(int day, int hour);
+  bool shouldBecomeElder(int day, int hour);
+  bool shouldDie(int day, int hour);
 
   time_t baseUnixTime = 0;       // Il tempo Unix ricevuto via BLE/WiFi
   unsigned long syncMillis = 0;  // Il valore di millis() al momento della sicro

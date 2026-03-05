@@ -72,8 +72,7 @@ String MochiState::getTimeString() {
   unsigned long elapsedSeconds = (millis() - syncMillis) / 1000;
   time_t now = baseUnixTime + elapsedSeconds;
   
-  // Usiamo gmtime per visualizzare il timestamp "così com'è" 
-  // senza che l'ESP32 aggiunga ore di testa sua
+  // Usiamo gmtime per visualizzare il timestamp 
   struct tm * timeinfo;
   timeinfo = gmtime(&now); 
   
@@ -114,10 +113,33 @@ void MochiState::updateDecay() {
   }
 }
 
+// ==========================================
+// CONDIZIONI DI EVOLUZIONE (Helpers)
+// ==========================================
+
+// Lunedì dopo le 10:00 (oppure i giorni successivi)
+bool MochiState::shouldHatch(int day, int hour) {
+    return (day > 1 || (day == 1 && hour >= 10));
+}
+
+// Martedì dopo le 18:00 (oppure i giorni successivi)
+bool MochiState::shouldBecomeAdult(int day, int hour) {
+    return (day > 2 || (day == 2 && hour >= 18));
+}
+
+// Giovedì dopo le 18:00 (oppure i giorni successivi)
+bool MochiState::shouldBecomeElder(int day, int hour) {
+    return (day > 4 || (day == 4 && hour >= 18));
+}
+
+// Venerdì dopo le 18:00 (oppure nel weekend: day 0 è Domenica, >5 è Sabato)
+bool MochiState::shouldDie(int day, int hour) {
+    return (day == 0 || day > 5 || (day == 5 && hour >= 18));
+}
+
 void MochiState::checkLifecycle() {
     time_t now = getNow();
-    if (now == 0 || needsGrowthAnimation || isDying) return; // Se l'ora non è sincro o sta già animando, esci
-    if (now == 0 || needsGrowthAnimation || isDying || (millis() - lastEvolutionTime < evolutionCooldown)) return;
+    if (now == 0 || needsGrowthAnimation || isDying || (millis() - lastEvolutionTime < evolutionCooldown)) return; // Se l'ora non è sincro o sta già animando, esci
 
     struct tm * timeinfo;
     timeinfo = gmtime(&now); // Converte il timestamp in ore/giorni
@@ -126,22 +148,22 @@ void MochiState::checkLifecycle() {
     int hour = timeinfo->tm_hour;
     
     // Lunedì (1) ore 10: Uovo -> Baby
-    if (currentAge == EGG && day == 1 && hour >= 10) {
+    if (currentAge == EGG && shouldHatch(day, hour)) {
         targetGrowthStage = BABY;
         needsGrowthAnimation = true;
     } 
     // Martedì (2) ore 18: Baby -> Adulto
-    else if (currentAge == BABY && day == 2 && hour >= 18) {
+    else if (currentAge == BABY && shouldBecomeAdult(day, hour)) {
         targetGrowthStage = ADULT;
         needsGrowthAnimation = true;
     }
     // Giovedì (4) ore 18: Adulto -> Vecchio
-    else if (currentAge == ADULT && day == 4 && hour >= 18) {
+    else if (currentAge == ADULT && shouldBecomeElder(day, hour)) {
         targetGrowthStage = ELDER;
         needsGrowthAnimation = true;
     }
     // Venerdì (5) ore 18: Vecchio -> Muore / Torna Uovo
-    else if (currentAge == ELDER && day == 5 && hour >= 18) {
+    else if (currentAge == ELDER && shouldDie(day, hour)) {
         // Puoi scegliere se farlo morire (isDying = true) o farlo tornare direttamente uovo
         isDying = true; 
         targetGrowthStage = EGG; 
