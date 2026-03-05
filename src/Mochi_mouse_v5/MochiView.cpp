@@ -277,7 +277,7 @@ void MochiView::drawEgg(int cx, int cy, float animAngle, float crackProgress) {
   }
   // Ombra a terra e disegno Sprite ruotato
   canvas->fillEllipse(cx, anchorY - 5, rX - 5, 8, K_PROG_BG);
-  eggTempSprite->pushRotateZO(canvas, cx, anchorY, wobbleDeg, 1.0f, 1.0f, 0xF81F);
+  eggTempSprite->pushRotateZoom(canvas, cx, anchorY, wobbleDeg, 1.0f, 1.0f, 0xF81F);
 }
 
 void MochiView::drawWrinkles(int cx, int eyeY, int spacingX) {
