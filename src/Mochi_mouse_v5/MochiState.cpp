@@ -117,6 +117,7 @@ void MochiState::updateDecay() {
 void MochiState::checkLifecycle() {
     time_t now = getNow();
     if (now == 0 || needsGrowthAnimation || isDying) return; // Se l'ora non è sincro o sta già animando, esci
+    if (now == 0 || needsGrowthAnimation || isDying || (millis() - lastEvolutionTime < evolutionCooldown)) return;
 
     struct tm * timeinfo;
     timeinfo = gmtime(&now); // Converte il timestamp in ore/giorni
