@@ -1,101 +1,137 @@
 #include "MochiBLE.h"
 
-// --- CONFIGURAZIONE UUID ---
-#define SERVICE_UUID           "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID_RX "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define CHARACTERISTIC_UUID_TX "12345678-1234-5678-1234-56789abcdef0" 
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-// Gestore Connessione/Disconnessione
+// ================================================================
+// CLASSI CALLBACK
+// ================================================================
+
 class MyServerCallbacks: public BLEServerCallbacks {
     Adafruit_NeoPixel* led;
 public:
-    // Il costruttore riceve il LED per poterlo cambiare
     MyServerCallbacks(Adafruit_NeoPixel* l) : led(l) {}
 
     void onConnect(BLEServer* pServer) {
         if(led) {
-            led->setPixelColor(0, led->Color(0, 0, 255)); // Blu = Bluetooth connesso
+            led->setPixelColor(0, led->Color(0, 255, 140)); // Colore del tuo vecchio sketch
             led->show();
         }
+        Serial.println("BLE: Device Connesso");
     }
 
     void onDisconnect(BLEServer* pServer) {
         if(led) {
-            led->setPixelColor(0, led->Color(0, 255, 0)); // Verde = Disconnesso/Pronto
+            led->setPixelColor(0, led->Color(0, 0, 0)); // Spento
             led->show();
         }
-        // Riavvia l'advertising per permettere di ricollegarsi
-        pServer->startAdvertising(); 
+        pServer->getAdvertising()->start();
+        Serial.println("BLE: Device Disconnesso - Advertising riavviato");
     }
 };
 
-// Gestore Ricezione Dati
 class MyCallbacks: public BLECharacteristicCallbacks {
-    MochiState* mochi;
+    MochiState* statePtr;
 public:
-    MyCallbacks(MochiState* m) : mochi(m) {}
+    MyCallbacks(MochiState* s) : statePtr(s) {}
 
     void onWrite(BLECharacteristic *pCharacteristic) {
-        // Ora getValue() restituisce direttamente una String di Arduino!
-        String rxValue = pCharacteristic->getValue();
-        
-        if (rxValue.length() > 0) {
-            // Passa il comando allo stato centrale
-            if (mochi) {
-                mochi->lastCommand = rxValue;
+        String cmd = pCharacteristic->getValue(); 
+
+        if (cmd.length() > 0) {
+            Serial.println("Ricevuto BLE: " + cmd);
+            
+            if (cmd.startsWith("unix:")) {
+                long timestamp = atol(cmd.substring(5).c_str());
+                statePtr->syncTime(timestamp);
+            } else if (cmd.startsWith("set_json:")) {
+                String json = cmd.substring(9); 
+                statePtr->saveSettings(json);
+                statePtr->saveState(); 
+                Serial.println("Settings salvati.");
+            } else if (cmd == "get_json") {
+                pCharacteristic->setValue(statePtr->settingsBlob.c_str());
+                pCharacteristic->notify();
+                Serial.println("Settings inviati al browser.");
+            } else {
+                statePtr->applyCommand(cmd);
             }
-            Serial.print("Ricevuto via BLE: ");
-            Serial.println(rxValue);
         }
     }
 };
+
+// ================================================================
+// IMPLEMENTAZIONE CLASSE
+// ================================================================
 
 MochiBLE::MochiBLE(MochiState* m, Adafruit_NeoPixel* led) {
     mochi = m;
     statusLed = led;
     pServer = nullptr;
+    pCharacteristic = nullptr;
 
-    // --- GENERAZIONE NOME DINAMICO (Tuo metodo originale) ---
     uint32_t chipId = 0;
-    for(int i=0; i<17; i=i+8) { 
-        chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i; 
-    }
+    for(int i=0; i<17; i=i+8) { chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i; }
     String deviceName = "Mochi-" + String(chipId, HEX);
     deviceName.toUpperCase();
-    
-    // Salviamo il nome calcolato nella variabile di classe
     bleName = deviceName;
 }
 
 void MochiBLE::begin() {
     Serial.println("Inizializzazione BLE...");
     BLEDevice::init(bleName.c_str());
+    BLEDevice::setMTU(512); // FONDAMENTALE PER I JSON LUNGHI!
 
-    // Crea il Server e assegna le Callback passandogli il LED
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks(statusLed));
 
-    // Crea il Servizio
     BLEService *pService = pServer->createService(SERVICE_UUID);
 
-    // Caratteristica TX (Notifiche dal Mochi al Telefono, opzionale)
-    BLECharacteristic *pTxCharacteristic = pService->createCharacteristic(
-                                        CHARACTERISTIC_UUID_TX,
-                                        BLECharacteristic::PROPERTY_NOTIFY
-                                    );
-    pTxCharacteristic->addDescriptor(new BLE2902());
+    // Singola caratteristica tuttofare (come nel tuo codice originale)
+    pCharacteristic = pService->createCharacteristic(
+                        CHARACTERISTIC_UUID,
+                        BLECharacteristic::PROPERTY_READ   |
+                        BLECharacteristic::PROPERTY_WRITE  |
+                        BLECharacteristic::PROPERTY_WRITE_NR | // Aggiunto NR per Chrome web-bluetooth
+                        BLECharacteristic::PROPERTY_NOTIFY
+                      );
 
-    // Caratteristica RX (Scrittura dal Telefono al Mochi)
-    BLECharacteristic *pRxCharacteristic = pService->createCharacteristic(
-                                        CHARACTERISTIC_UUID_RX,
-                                        BLECharacteristic::PROPERTY_WRITE
-                                    );
-    // Assegna la callback passandogli lo stato del Mochi
-    pRxCharacteristic->setCallbacks(new MyCallbacks(mochi));
+    pCharacteristic->setCallbacks(new MyCallbacks(mochi));
+    pCharacteristic->addDescriptor(new BLE2902());
 
-    // Avvia tutto
     pService->start();
-    pServer->getAdvertising()->start();
+
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);  
+    pAdvertising->setMinPreferred(0x12);
     
-    Serial.println("BLE in ascolto!");
+    pAdvertising->start(); 
+    Serial.println("BLE Pronto come: " + bleName);
+}
+
+void MochiBLE::scanForFriends() {
+    BLEScan* pBLEScan = BLEDevice::getScan();
+    pBLEScan->setActiveScan(true);
+    
+    BLEScanResults* foundDevices = pBLEScan->start(2, false);
+    
+    for (int i = 0; i < foundDevices->getCount(); i++) {
+        BLEAdvertisedDevice device = foundDevices->getDevice(i);
+        String name = String(device.getName().c_str());
+        if (name.startsWith("Mochi-")) {
+            Serial.print("Amico trovato: ");
+            Serial.println(name);
+            mochi->applyCommand("friend_nearby");
+        }
+    }
+    pBLEScan->clearResults();
+}
+
+bool MochiBLE::isConnected() {
+    if (pServer != nullptr) {
+        return pServer->getConnectedCount() > 0;
+    }
+    return false;
 }

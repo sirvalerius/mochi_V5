@@ -9,18 +9,21 @@
 #include <Adafruit_NeoPixel.h>
 #include "MochiState.h"
 
-// Rimosse le macro UUID e le classi Callback (ora sono sicure nel .cpp)
-
 class MochiBLE {
 private:
     MochiState* mochi;
     Adafruit_NeoPixel* statusLed;
     String bleName;
     BLEServer* pServer;
+    BLECharacteristic* pCharacteristic; // Ripristinato il puntatore
 
 public:
     MochiBLE(MochiState* m, Adafruit_NeoPixel* led);
     void begin();
+    
+    // Ripristinate le funzioni originali
+    void scanForFriends();
+    bool isConnected();
 };
 
 #endif // MOCHI_BLE_H
