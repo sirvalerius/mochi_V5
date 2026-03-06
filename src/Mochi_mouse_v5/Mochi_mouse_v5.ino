@@ -49,30 +49,26 @@ void performMouseClick() {
 
 // --- GESTORE ANIMAZIONI (FSM) ---
 void handleAnimations(unsigned long now) {
-  bool isConn = ble->isConnected(); // Serve per il render
+  bool isConn = ble->isConnected();
+  unsigned long elapsed = now - animStartTime;
 
-  // --- ANIMAZIONE SALTO (I vecchi 5 minuti) ---
-  if (sysState == STATE_JUMPING) {
-    if (elapsed > 600) { // Il salto dura un po' di più per essere visibile
-      sysState = STATE_NORMAL;
-      return;
-    }
-    int jumpOffset = -abs(sin((elapsed / 600.0) * 2.0 * M_PI)) * 35; // Effetto rimbalzo: Mochi salta due volte (usando sin^2 o valore assoluto) Con 2.0 * M_PI fa due balzi nel tempo dell'animazione
+  // --- STATO: MOVIMENTO MOUSE (Cerchio) ---
+  if (sysState == STATE_MOVING_MOUSE) {
+    float progress = (float)elapsed / 1200.0; // Durata 1.2 secondi
 
-    view->render(mochi, jumpOffset, now / 200.0f, true, isConn);
-  } else if (sysState == STATE_MOVING_MOUSE) {
-    if (elapsed > 1200) { // Durata cerchio
-      // FINE MOUSE -> INIZIO SALTO
+    if (progress >= 1.0) {
+      // Passaggio automatico al salto
       sysState = STATE_JUMPING;
-      animStartTime = now; // Reset del cronometro per il salto
+      animStartTime = now;
       return;
     }
 
+    // Calcolo cerchio basato su progress (0.0 -> 1.0 sostituisce l'angolo)
     static float lx = 0, ly = 0;
     if (elapsed < 20) { lx = 0; ly = 0; }
 
     float r = 25.0; 
-    float angle = (elapsed / 1200.0) * 2.0 * M_PI;
+    float angle = progress * 2.0 * M_PI; // Un giro completo
     float nx = r * cos(angle) - r;
     float ny = r * sin(angle);
 
@@ -83,8 +79,26 @@ void handleAnimations(unsigned long now) {
       lastM = now;
     }
     view->render(mochi, 0, now / 200.0f, false, isConn);
+
+  // --- STATO: SALTO (Esultanza) ---
+  } else if (sysState == STATE_JUMPING) {
+    float progress = (float)elapsed / 600.0; // Durata 0.6 secondi
+
+    if (progress >= 1.0) {
+      sysState = STATE_NORMAL;
+      mochi.resetTimer();
+      return;
+    }
+
+    // Formula del salto basata su progress
+    // Usiamo sin(progress * 2 * PI) per fare due rimbalzi (0->1->0->1->0)
+    int jumpOffset = -abs(sin(progress * 2.0 * M_PI)) * 35;
+    
+    view->render(mochi, jumpOffset, now / 200.0f, true, isConn);
+
+  // --- STATO: MORTE ---
   } else if (sysState == STATE_DYING) {
-    float progress = (float)(now - animStartTime) / 3000.0; 
+    float progress = (float)elapsed / 3000.0; 
     if (progress >= 1.0) {
       mochi.finalizeDeath();
       sysState = STATE_DEAD_PAUSE;
@@ -95,18 +109,18 @@ void handleAnimations(unsigned long now) {
     int trembleX = (random(5) - 2) * (1.0 - progress); 
     view->render(mochi, offsetY + trembleX, now / 200.0f, false, isConn);
 
-  // --- PAUSA DA MORTO (2 Secondi) ---
+  // --- STATO: PAUSA POST-MORTE ---
   } else if (sysState == STATE_DEAD_PAUSE) {
-    float progress = (float)(now - animStartTime) / 2000.0;
+    float progress = (float)elapsed / 2000.0;
     if (progress >= 1.0) {
       sysState = STATE_NORMAL;
       return;
     }
     view->render(mochi, 0, now / 200.0f, false, isConn);
 
-  // --- ANIMAZIONE CRESCITA/SCHIUSA (2 Secondi) ---
+  // --- STATO: CRESCITA/SCHIUSA ---
   } else if (sysState == STATE_GROWING) {
-    float progress = (float)(now - animStartTime) / 2000.0; 
+    float progress = (float)elapsed / 2000.0; 
     if (progress >= 1.0) {
       sysState = STATE_GROWING_FLASH;
       animStartTime = now;
@@ -114,10 +128,10 @@ void handleAnimations(unsigned long now) {
     }
     view->drawGrowthFrame(progress, mochi.currentAge, mochi.targetGrowthStage);
 
-  // --- FLASH LUMINOSO FINALE (0.5 Secondi) ---
+  // --- STATO: FLASH FINALE ---
   } else if (sysState == STATE_GROWING_FLASH) {
-    float flashProgress = (float)(now - animStartTime) / 500.0;
-    if (flashProgress >= 1.0) {
+    float progress = (float)elapsed / 500.0;
+    if (progress >= 1.0) {
       mochi.finalizeGrowth();
       sysState = STATE_NORMAL;
       return;
