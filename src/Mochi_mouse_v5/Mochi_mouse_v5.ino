@@ -53,26 +53,36 @@ void handleAnimations(unsigned long now) {
 
   // --- ANIMAZIONE SALTO (I vecchi 5 minuti) ---
   if (sysState == STATE_JUMPING) {
-    if (animStep == 0) { Mouse.move(0, -20); animStep++; }
-    else if (animStep == 1 && millis() - animStartTime > 100) { Mouse.move(0, 20); animStep++; }
-    else if (animStep == 2 && millis() - animStartTime > 200) { sysState = STATE_NORMAL; return; }
-    int jumpOffset = (animStep == 1) ? -15 : 0;
+    if (elapsed > 600) { // Il salto dura un po' di più per essere visibile
+      sysState = STATE_NORMAL;
+      return;
+    }
+    int jumpOffset = -abs(sin((elapsed / 600.0) * 2.0 * M_PI)) * 35; // Effetto rimbalzo: Mochi salta due volte (usando sin^2 o valore assoluto) Con 2.0 * M_PI fa due balzi nel tempo dell'animazione
+
     view->render(mochi, jumpOffset, now / 200.0f, true, isConn);
-
-  // --- ANIMAZIONE MOUSE ---
   } else if (sysState == STATE_MOVING_MOUSE) {
-    if (millis() - animStartTime > 500) { sysState = STATE_NORMAL; return; }
+    if (elapsed > 1200) { // Durata cerchio
+      // FINE MOUSE -> INIZIO SALTO
+      sysState = STATE_JUMPING;
+      animStartTime = now; // Reset del cronometro per il salto
+      return;
+    }
 
-    static unsigned long lastMouseTime = 0;
-    if (millis() - lastMouseTime >= 10) {
-      animLx += (random(5) - 2); 
-      animLy += (random(5) - 2);
-      Mouse.move((int)(animLx/10), (int)(animLy/10));
-      lastMouseTime = millis();
+    static float lx = 0, ly = 0;
+    if (elapsed < 20) { lx = 0; ly = 0; }
+
+    float r = 25.0; 
+    float angle = (elapsed / 1200.0) * 2.0 * M_PI;
+    float nx = r * cos(angle) - r;
+    float ny = r * sin(angle);
+
+    static unsigned long lastM = 0;
+    if (now - lastM > 15) {
+      Mouse.move((int)(nx - lx), (int)(ny - ly));
+      lx = nx; ly = ny;
+      lastM = now;
     }
     view->render(mochi, 0, now / 200.0f, false, isConn);
-
-  // --- ANIMAZIONE MORTE (3 Secondi) ---
   } else if (sysState == STATE_DYING) {
     float progress = (float)(now - animStartTime) / 3000.0; 
     if (progress >= 1.0) {
@@ -206,7 +216,8 @@ void loop() {
   if (mochi.timeForAction()) {
     mochi.recharge();
     if(!mochi.isAutoClickActive) {
-      sysState = STATE_JUMPING;
+      mochi.resetTimer();
+      sysState = STATE_MOVING_MOUSE;
       animStep = 0;
       animStartTime = now;
     } else {
