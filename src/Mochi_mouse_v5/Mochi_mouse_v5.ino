@@ -54,7 +54,7 @@ void handleAnimations(unsigned long now) {
 
   // --- STATO: MOVIMENTO MOUSE (Cerchio) ---
   if (sysState == STATE_MOVING_MOUSE) {
-    float progress = (float)elapsed / 1200.0; // Durata 1.2 secondi
+    float progress = (float)elapsed / 500.0; // Durata 0.5 secondi
 
     if (progress >= 1.0) {
       // Passaggio automatico al salto
