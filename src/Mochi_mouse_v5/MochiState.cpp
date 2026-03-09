@@ -58,7 +58,18 @@ void MochiState::saveSettings(String newJson) {
 // LOGICA ORARIO
 // ==========================================
 
-void MochiState::syncTime(long unixTime) {
+void MochiState::syncTime(long unixTime) {  
+  int missedTicks = getMissedIncrements(unixTime); //calcola tick di tempo passati dall'ultimo momento in cui il device era acceso  
+  if (missedTicks > 0) {
+      Serial.print("Mochi è stato spento per ");
+      Serial.print(missedTicks * 5);
+      Serial.println(" minuti!");
+      
+      // Qui in futuro potrai abbassare la fame (hunger) o la felicità (happy) 
+      // in base a 'missedTicks', così quando lo riaccendi avrà fame!
+      // Esempio: hunger -= (missedTicks * 0.5); 
+  }
+
   baseUnixTime = unixTime;
   syncMillis = millis();
   Serial.printf("Ora Sincronizzata: %ld\n", unixTime);
@@ -90,6 +101,20 @@ time_t MochiState::getNow() {
 // LOGICA GIOCO
 // ==========================================
 
+void MochiState::applyTick() {
+  // 1. Aggiorna i bisogni (Fame, Felicità, ecc.)
+  updateDecay();
+  recharge();
+  // 2. Controlla l'orologio biologico (Nascita, Evoluzione, Morte)
+  checkLifecycle();
+  // 3. Salva i progressi in memoria in modo sicuro ogni 5 minuti
+  saveState();
+  
+  // Debug
+  Serial.println("--- TICK 5 MINUTI ESEGUITO ---");
+  Serial.printf("Fame: %.1f | Felicità: %.1f | Età: %d\n", hunger, happy, currentAge);
+}
+
 void MochiState::updateDecay() {
   hunger -= HUNGER_DECAY;
   happy -= HAPPY_DECAY;
@@ -117,6 +142,7 @@ void MochiState::updateDecay() {
 // CONDIZIONI DI EVOLUZIONE (Helpers)
 // ==========================================
 
+/*
 // Lunedì dopo le 10:00 (oppure i giorni successivi)
 bool MochiState::shouldHatch(int day, int hour) {
     return (day > 1 || (day == 1 && hour >= 10));
@@ -135,6 +161,28 @@ bool MochiState::shouldBecomeElder(int day, int hour) {
 // Venerdì dopo le 18:00 (oppure nel weekend: day 0 è Domenica, >5 è Sabato)
 bool MochiState::shouldDie(int day, int hour) {
     return (day == 0 || day > 5 || (day == 5 && hour >= 18));
+} */
+
+AgeStage MochiState::getExpectedStage(int day, int hour) {
+    // 1. IL WEEKEND (Morte/Uovo): Da Venerdì ore 18:00 a Lunedì ore 09:59
+    if (day == 6 || day == 0) return EGG; // Sabato e Domenica
+    if (day == 5 && hour >= 18) return EGG; // Venerdì sera
+    if (day == 1 && hour < 10) return EGG; // Lunedì mattina presto
+
+    // 2. FASE BABY: Da Lunedì ore 10:00 a Martedì ore 17:59
+    if (day == 1 && hour >= 10) return BABY;
+    if (day == 2 && hour < 18) return BABY;
+
+    // 3. FASE ADULTO: Da Martedì ore 18:00 a Giovedì ore 17:59
+    if (day == 2 && hour >= 18) return ADULT;
+    if (day == 3) return ADULT; // Mercoledì tutto il giorno
+    if (day == 4 && hour < 18) return ADULT;
+
+    // 4. FASE ANZIANO: Da Giovedì ore 18:00 a Venerdì ore 17:59
+    if (day == 4 && hour >= 18) return ELDER;
+    if (day == 5 && hour < 18) return ELDER;
+
+    return EGG; // Sicurezza fallback
 }
 
 void MochiState::checkLifecycle() {
@@ -146,28 +194,49 @@ void MochiState::checkLifecycle() {
     
     int day = timeinfo->tm_wday; // 0 = Domenica, 1 = Lunedì, 2 = Martedì... 5 = Venerdì
     int hour = timeinfo->tm_hour;
+
+    AgeStage expected = getExpectedStage(day, hour);
     
-    // Lunedì (1) ore 10: Uovo -> Baby
-    if (currentAge == EGG && shouldHatch(day, hour)) {
+    if ((expected == EGG && currentAge != EGG) || currentAge > expected) {
+        isDying = true;
+        targetGrowthStage = EGG;
+        return;
+    }
+
+    // Se è tutto ok o è indietro con l'età, facciamo la scalata CATCH-UP (1 step per ogni tick)
+    if (currentAge == EGG && expected >= BABY) {
         targetGrowthStage = BABY;
         needsGrowthAnimation = true;
     } 
-    // Martedì (2) ore 18: Baby -> Adulto
-    else if (currentAge == BABY && shouldBecomeAdult(day, hour)) {
+    else if (currentAge == BABY && expected >= ADULT) {
         targetGrowthStage = ADULT;
         needsGrowthAnimation = true;
     }
-    // Giovedì (4) ore 18: Adulto -> Vecchio
-    else if (currentAge == ADULT && shouldBecomeElder(day, hour)) {
+    else if (currentAge == ADULT && expected == ELDER) {
         targetGrowthStage = ELDER;
         needsGrowthAnimation = true;
     }
-    // Venerdì (5) ore 18: Vecchio -> Muore / Torna Uovo
-    else if (currentAge == ELDER && shouldDie(day, hour)) {
-        // Puoi scegliere se farlo morire (isDying = true) o farlo tornare direttamente uovo
-        isDying = true; 
-        targetGrowthStage = EGG; 
+}
+
+int MochiState::getMissedIncrements(time_t newUnixTime) {
+    // 1. Se è la prima accensione in assoluto o l'orario salvato era il default (1700000000)
+    if (baseUnixTime == 0 || baseUnixTime == 1700000000) {
+        return 0; // Nessun incremento perso, si parte da zero
     }
+
+    // 2. Sicurezza: Se per caso il nuovo orario è indietro rispetto al passato (errore di rete)
+    if (newUnixTime <= baseUnixTime) {
+        return 0;
+    }
+
+    // 3. Calcolo della differenza in secondi
+    unsigned long diffSeconds = newUnixTime - baseUnixTime;
+
+    // 4. Dividiamo per 300 (i secondi in 5 minuti)
+    // Se ACTION_INTERVAL lo avevi impostato a 300000 (ms), corrisponde esattamente a 300s.
+    int missedIntervals = diffSeconds / 300; 
+
+    return missedIntervals;
 }
 
 void MochiState::applyCommand(String cmd) {

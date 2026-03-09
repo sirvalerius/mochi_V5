@@ -17,13 +17,19 @@ private:
 
   int evolutionCooldown = STATE_COOLDOWN;
 
-  bool shouldHatch(int day, int hour);
+/*  bool shouldHatch(int day, int hour);
   bool shouldBecomeAdult(int day, int hour);
   bool shouldBecomeElder(int day, int hour);
   bool shouldDie(int day, int hour);
+*/
+  AgeStage getExpectedStage(int day, int hour);
 
   time_t baseUnixTime = 0;       // Il tempo Unix ricevuto via BLE/WiFi
   unsigned long syncMillis = 0;  // Il valore di millis() al momento della sicro
+
+  // --- LOGICA GIOCO ---
+  void updateDecay();
+  void checkLifecycle();
 
 public:
   float hunger;
@@ -67,10 +73,10 @@ public:
   void syncTime(long unixTime);
   String getTimeString();
   time_t getNow();
+  int getMissedIncrements(time_t newUnixTime);
 
   // --- LOGICA GIOCO ---
-  void updateDecay();
-  void checkLifecycle();
+  void applyTick();
   void applyCommand(String cmd);
   void recharge();
   

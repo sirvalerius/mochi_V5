@@ -45,8 +45,8 @@
 
 // --- LOGICA GIOCO ---
 #define MAX_VAL 100.0
-#define HUNGER_DECAY 0.0005
-#define HAPPY_DECAY  0.0003
+#define HUNGER_DECAY 0.17
+#define HAPPY_DECAY  0.10
 #define ACTION_INTERVAL 300000 // 5 minuti
 #define STATE_COOLDOWN  60000  // 1 minuto
 

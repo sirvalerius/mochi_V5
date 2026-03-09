@@ -198,10 +198,6 @@ void loop() {
     animStartTime = now;
     return;
   } 
-
-  // 4. LOGICA STANDARD E AGGIORNAMENTO STATISTICHE
-  mochi.updateDecay();
-  mochi.checkLifecycle();
   
   if (mochi.lastCommand != "") {
      mochi.isHeartVisible = true;
@@ -228,14 +224,17 @@ void loop() {
 
   // Routine Automatica (Jiggler/Salti)
   if (mochi.timeForAction()) {
-    mochi.recharge();
+
+    mochi.resetTimer();
+    mochi.applyTick();
+
     if(!mochi.isAutoClickActive) {
       mochi.resetTimer();
       sysState = STATE_MOVING_MOUSE;
       animStep = 0;
       animStartTime = now;
     } else {
-      mochi.resetTimer();
+      
     }
   }
 }
