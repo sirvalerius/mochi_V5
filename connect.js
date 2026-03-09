@@ -7,6 +7,8 @@ let connectedDevice = null;
 
 let mochiSettings = {
     timezone: "Europe/Rome",
+	bgTop: "#FFA0C8",    
+    bgBottom: "#82F0FF",
     // Aggiungi qui altre preferenze in futuro
 };
 
@@ -24,6 +26,8 @@ const settingsBackdrop = document.getElementById('settings-backdrop');
 const btnSaveSettings = document.getElementById('btn-save-settings');
 const btnCloseSettings = document.getElementById('btn-close-settings');
 const tzSelector = document.getElementById('tz-selector');
+const colorTopPicker = document.getElementById('color-top');       
+const colorBottomPicker = document.getElementById('color-bottom');
 
 // 1. Caricamento versione
 fetch('manifest.json')
@@ -205,10 +209,14 @@ async function sendCmd(action) {
 async function saveAndUploadSettings() {
     // 1. Preleva i valori dalla UI
     mochiSettings.timezone = tzSelector.value;
+	mochiSettings.bgTop = colorTopPicker.value;       
+    mochiSettings.bgBottom = colorBottomPicker.value; 
     // mochiSettings.brightness = sliderBrightness.value;
 
     // 2. Salva localmente (per sicurezza)
     localStorage.setItem('selectedTimezone', mochiSettings.timezone);
+	localStorage.setItem('bgTop', mochiSettings.bgTop);       
+    localStorage.setItem('bgBottom', mochiSettings.bgBottom); 
 
     // 3. Invia al Mochi via BLE
     // Usiamo un prefisso "set:" per far capire all'ESP32 che deve salvare
