@@ -127,6 +127,9 @@ async function connectToMochi() {
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
         mochiCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+		
+		await mochiCharacteristic.startNotifications();
+		mochiCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
         
         onConnected(device.name);
     } catch (e) {
@@ -241,3 +244,24 @@ cmdButtons.forEach(btn => {
         if (cmd) sendCmd(cmd);
     };
 });
+
+function handleNotifications(event) {
+    let receivedString = new TextDecoder().decode(event.target.value);
+    
+    if (receivedString.startsWith("{")) {
+        try {
+            let syncData = JSON.parse(receivedString);
+            
+            // ECCO IL TUO LOG! Apparirà nella console premendo F12
+            console.log("%c📦 [BLE SYNC] Impostazioni ricevute da Mochi:", "color: #00d2ff; font-weight: bold; font-size: 14px;");
+            console.dir(syncData); 
+            
+            // Qui poi aggiornerai l'interfaccia (Fuso orario, Colori, ecc.)
+
+        } catch (error) {
+            console.error("Errore nel parsing del JSON:", error);
+        }
+    } else {
+        console.log("[BLE RAW] Ricevuto:", receivedString);
+    }
+}
