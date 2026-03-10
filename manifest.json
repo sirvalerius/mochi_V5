@@ -1,6 +1,6 @@
 {
   "name": "Mochi Mouse",
-  "version": "0.3.2.63",
+  "version": "0.3.2.64",
   "new_install_prompt_erase": true,
   "builds": [
     {
