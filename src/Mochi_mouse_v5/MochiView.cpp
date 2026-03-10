@@ -300,7 +300,7 @@ void MochiView::drawEyes(int cx, int cy, int spacingX, int yOffset, int rX, int 
   int rightEyeX = cx + spacingX;
   int eyeY = cy + yOffset;
 
-  if (stage == BABY) {
+  if (stage == BABY || stage == ADULT) {
     if (wink) {
       canvas->drawArc(leftEyeX, eyeY + (rY/3), rX, rY/3, 180, 360, K_EYE);
       canvas->drawArc(leftEyeX, eyeY + (rY/3) + 1, rX, rY/3, 180, 360, K_EYE);
