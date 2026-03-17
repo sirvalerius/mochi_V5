@@ -2,6 +2,7 @@
 #define MOCHI_STATE_H
 
 #include <Preferences.h> // Libreria per la memoria permanente
+#include <ArduinoJson.h>
 #include "Settings.h"
 
 enum AgeStage {
@@ -37,6 +38,12 @@ public:
   unsigned long lastActionTime = 0;
 
   String settingsBlob = "{}"; // Default: JSON vuoto
+
+  uint16_t bgTopColor = K_BG_TOP;    // Default: K_BG_TOP
+  uint16_t bgBottomColor = K_BG_BOTTOM; // Default: K_BG_BOTTOM
+  bool colorsUpdated = false;
+
+  int screenBrightness = 255;
   
   bool isDying = false;
   bool isHeartVisible = false;
@@ -68,6 +75,8 @@ public:
   void saveState();
   void loadSettings();
   void saveSettings(String newJson);
+
+  void applySettings();            // Nuova funzione per applicare il JSON dei setting
 
   // --- LOGICA ORARIO ---
   void syncTime(long unixTime);

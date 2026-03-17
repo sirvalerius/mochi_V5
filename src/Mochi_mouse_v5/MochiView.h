@@ -37,7 +37,8 @@ public:
 
   // Metodi principali
   void render(MochiState &state, int yOff, float animAngle, bool wink, bool connected);
-  void setBackgroundGradient(uint16_t topHex, uint16_t botHex);
+  //void setBackgroundGradient(uint16_t topHex, uint16_t botHex);
+  void setBackgroundColors(uint16_t top, uint16_t bottom);
   void drawGrowthFrame(float t, AgeStage from, AgeStage to);
 };
 
