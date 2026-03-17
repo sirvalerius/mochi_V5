@@ -30,6 +30,7 @@ jobs:
           arduino-cli core install esp32:esp32 --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           arduino-cli lib install "LovyanGFX"
           arduino-cli lib install "Adafruit NeoPixel"
+          arduino-cli lib install "ArduinoJson"
 
       - name: Set Version Number
         run: |

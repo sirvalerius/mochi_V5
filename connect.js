@@ -264,7 +264,7 @@ async function saveAndUploadSettings() {
     await sendCmd(payload);
     
     console.log("Impostazioni inviate al Mochi!");
-    closeSettings(); // Chiudi la sidebar
+    closeSettings(); // Chiudi la sidebarV
 	
 	if (mochiCharacteristic) {
         await syncMochiTime(); // <-- RIGA AGGIUNTA
