@@ -49,10 +49,13 @@ void MochiView::render(MochiState &state, int yOff, float animAngle, bool wink, 
   canvas->pushSprite(0, 0);
 }
 
-void MochiView::setBackgroundGradient(uint16_t topHex, uint16_t botHex) {
-  currentBgTop = topHex;
-  currentBgBottom = botHex;
-  bgCalculated = false; // Forza il ricalcolo al prossimo frame
+void MochiView::setBackgroundColors(uint16_t top, uint16_t bottom) {
+  // Se i colori sono diversi da quelli attuali
+  if (currentBgTop != top || currentBgBottom != bottom) {
+    currentBgTop = top;
+    currentBgBottom = bottom;
+    bgCalculated = false; // Questo flag a false FORZA il ricalcolo del gradiente al prossimo render!
+  }
 }
 
 void MochiView::drawGrowthFrame(float t, AgeStage from, AgeStage to) {

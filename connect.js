@@ -28,6 +28,8 @@ const btnCloseSettings = document.getElementById('btn-close-settings');
 const tzSelector = document.getElementById('tz-selector');
 const colorTopPicker = document.getElementById('color-top');       
 const colorBottomPicker = document.getElementById('color-bottom');
+const sliderBrightness = document.getElementById('slider-brightness');
+const brightnessVal = document.getElementById('brightness-val');
 
 // 1. Caricamento versione
 fetch('manifest.json')
@@ -166,11 +168,31 @@ async function onConnected(name) {
     syncMochiTime();
 }
 
+sliderBrightness.addEventListener('input', (e) => {
+    const val = e.target.value;
+    const percentage = Math.round((val / 255) * 100);
+    brightnessVal.innerText = percentage;
+});
+
 // Per salvare
 async function uploadSettings(settingsObj) {
     const jsonString = JSON.stringify(settingsObj);
     await sendCmd(`set_json:${jsonString}`);
 }
+
+function applyBackgroundColors(topColor, bottomColor) {
+    // Applica il gradiente al body della pagina
+    document.body.style.background = `linear-gradient(to bottom, ${topColor}, ${bottomColor})`;
+    
+    // Aggiorna anche i selettori colore nell'interfaccia
+    colorTopPicker.value = topColor;
+    colorBottomPicker.value = bottomColor;
+}
+
+// Applica i colori salvati al caricamento della pagina (o usa quelli di default)
+const savedBgTop = localStorage.getItem('bgTop') || "#FFA0C8";
+const savedBgBottom = localStorage.getItem('bgBottom') || "#82F0FF";
+applyBackgroundColors(savedBgTop, savedBgBottom);
 
 // Per caricare
 async function downloadSettings() {
@@ -185,6 +207,18 @@ async function downloadSettings() {
     if(mochiSettings.timezone) {
         tzSelector.value = mochiSettings.timezone;
 		localStorage.setItem('selectedTimezone', mochiSettings.timezone);
+    }
+	
+	if(mochiSettings.bgTop && mochiSettings.bgBottom) {
+        applyBackgroundColors(mochiSettings.bgTop, mochiSettings.bgBottom);
+        localStorage.setItem('bgTop', mochiSettings.bgTop);       
+        localStorage.setItem('bgBottom', mochiSettings.bgBottom);
+    }
+	
+	if(mochiSettings.brightness) {
+        sliderBrightness.value = mochiSettings.brightness;
+        brightnessVal.innerText = Math.round((mochiSettings.brightness / 255) * 100);
+        localStorage.setItem('brightness', mochiSettings.brightness);
     }
 }
 
@@ -214,12 +248,15 @@ async function saveAndUploadSettings() {
     mochiSettings.timezone = tzSelector.value;
 	mochiSettings.bgTop = colorTopPicker.value;       
     mochiSettings.bgBottom = colorBottomPicker.value; 
-    // mochiSettings.brightness = sliderBrightness.value;
+    mochiSettings.brightness = parseInt(sliderBrightness.value); // <-- AGGIUNTO
+	
+	applyBackgroundColors(mochiSettings.bgTop, mochiSettings.bgBottom);
 
     // 2. Salva localmente (per sicurezza)
     localStorage.setItem('selectedTimezone', mochiSettings.timezone);
 	localStorage.setItem('bgTop', mochiSettings.bgTop);       
     localStorage.setItem('bgBottom', mochiSettings.bgBottom); 
+	localStorage.setItem('brightness', mochiSettings.brightness); // <-- AGGIUNTO
 
     // 3. Invia al Mochi via BLE
     // Usiamo un prefisso "set:" per far capire all'ESP32 che deve salvare
@@ -255,6 +292,16 @@ function handleNotifications(event) {
             // ECCO IL TUO LOG! Apparirà nella console premendo F12
             console.log("%c📦 [BLE SYNC] Impostazioni ricevute da Mochi:", "color: #00d2ff; font-weight: bold; font-size: 14px;");
             console.dir(syncData); 
+			
+			if(syncData.timezone) tzSelector.value = syncData.timezone;
+			if(syncData.bgTop && syncData.bgBottom) {
+                applyBackgroundColors(syncData.bgTop, syncData.bgBottom);
+            }
+			if(syncData.brightness.brightness) {
+				sliderBrightness.value = syncData.brightness.brightness;
+				brightnessVal.innerText = Math.round((syncData.brightness.brightness / 255) * 100);
+				localStorage.setItem('brightness', syncData.brightness.brightness);
+			}
             
             // Qui poi aggiornerai l'interfaccia (Fuso orario, Colori, ecc.)
 

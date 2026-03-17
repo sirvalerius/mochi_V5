@@ -141,6 +141,8 @@ void handleAnimations(unsigned long now) {
   }
 }
 
+//----------------- SETUP ---------------------------------------------------------------
+
 void setup() {
   Serial.begin(115200);
   USB.begin();
@@ -149,13 +151,15 @@ void setup() {
   // Inizializzazione hardware (LGFX)
   display.init();
   display.setRotation(1);
-  pinMode(PIN_BL, OUTPUT); 
-  digitalWrite(PIN_BL, HIGH); 
+  
   canvas.createSprite(display.width(), display.height());
 
   // Inizializzazione Stato e View
   mochi.begin();
   view = new MochiView(&canvas);
+
+  pinMode(PIN_BL, OUTPUT); 
+  analogWrite(PIN_BL, mochi.screenBrightness);
 
   // Inizializzazione LED Globale
   statusLed.begin();
@@ -172,6 +176,8 @@ void setup() {
 
   mochi.resetTimer();
 }
+
+//----------------- LOOP  ---------------------------------------------------------------
 
 void loop() {
   unsigned long now = millis();
@@ -215,6 +221,11 @@ void loop() {
   float animAngle = now / 200.0;
 
   // Disegno a schermo
+  // --- CONTROLLO AGGIORNAMENTO COLORI ---
+  if (mochi.colorsUpdated) {
+    view->setBackgroundColors(mochi.bgTopColor, mochi.bgBottomColor);
+    mochi.colorsUpdated = false; // Resetta il flag
+  }
   view->render(mochi, (int)bounce, animAngle, wink, isConnected);
 
   // Autoclicker

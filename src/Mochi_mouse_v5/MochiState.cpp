@@ -45,6 +45,8 @@ void MochiState::loadSettings() {
     // Legge la stringa "settings", se non esiste usa "{}"
     settingsBlob = prefs.getString("settings", "{}");
     prefs.end();
+
+    applySettings();
 }
 
 void MochiState::saveSettings(String newJson) {
@@ -52,6 +54,33 @@ void MochiState::saveSettings(String newJson) {
     prefs.begin("mochi-data", false);
     prefs.putString("settings", settingsBlob);
     prefs.end();
+
+    applySettings();
+}
+
+void MochiState::applySettings() {
+  StaticJsonDocument<512> doc;
+  DeserializationError error = deserializeJson(doc, settingsBlob);
+  
+  if (!error) {
+    // 1. Applica la Luminosità direttamente al Pin della Retroilluminazione (PIN_BL)
+    if (doc.containsKey("brightness")) {
+      screenBrightness = doc["brightness"];
+      analogWrite(PIN_BL, screenBrightness); // Applica fisicamente la luminosità al display!
+    }
+    
+    // 2. Estrai i colori, convertili e avvisa che sono cambiati
+    if (doc.containsKey("bgTop") && doc.containsKey("bgBottom")) {
+      uint16_t newTop = hexToRGB565(doc["bgTop"]);
+      uint16_t newBottom = hexToRGB565(doc["bgBottom"]);
+      
+      if (bgTopColor != newTop || bgBottomColor != newBottom) {
+        bgTopColor = newTop;
+        bgBottomColor = newBottom;
+        colorsUpdated = true; // Segnala che i colori sono nuovi!
+      }
+    }
+  }
 }
 
 // ==========================================
@@ -116,11 +145,6 @@ void MochiState::applyTick() {
 }
 
 void MochiState::updateDecay() {
-  hunger -= HUNGER_DECAY;
-  happy -= HAPPY_DECAY;
-  if (hunger < 0) hunger = 0;
-  if (happy < 0) happy = 0;
-
   if (currentAge != EGG) {
     hunger -= HUNGER_DECAY;
     happy -= HAPPY_DECAY;
@@ -132,10 +156,12 @@ void MochiState::updateDecay() {
   if (lastCommand != "" && millis() - commandFeedbackTime > 1000) {
     lastCommand = "";
   }
-  
-  if (lastCommand != "" && millis() - commandFeedbackTime > 1000) {
-    lastCommand = "";
-  }
+}
+
+void MochiState::recharge() {
+  hunger += 10.0; if (hunger > MAX_VAL) hunger = MAX_VAL;
+  happy += 5.0;  if (happy > MAX_VAL) happy = MAX_VAL;
+  saveState(); // SALVA dopo la routine automatica dei 30s
 }
 
 // ==========================================
@@ -261,12 +287,6 @@ void MochiState::applyCommand(String cmd) {
   triggerHeart();
 }
 
-void MochiState::recharge() {
-  hunger += 10.0; if (hunger > MAX_VAL) hunger = MAX_VAL;
-  happy += 5.0;  if (happy > MAX_VAL) happy = MAX_VAL;
-  saveState(); // SALVA dopo la routine automatica dei 30s
-}
-
 void MochiState::triggerHeart() {
   // Solo logica casuale: se non è già visibile, c'è una piccola chance
   if (!isHeartVisible && random(5000) < 5) { // Ho abbassato un po' la probabilità
@@ -352,4 +372,14 @@ void MochiState::killMochi() {
   prefs.clear();
   prefs.end();
   Serial.println("Memoria Mochi resettata!");
+}
+
+// Funzione helper per convertire colore Web (#FFA0C8) a colore Display (RGB565)
+uint16_t hexToRGB565(const char* hexStr) {
+    if (hexStr[0] == '#') hexStr++;
+    long rgb = strtol(hexStr, NULL, 16);
+    uint8_t r = (rgb >> 16) & 0xFF;
+    uint8_t g = (rgb >> 8) & 0xFF;
+    uint8_t b = rgb & 0xFF;
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
