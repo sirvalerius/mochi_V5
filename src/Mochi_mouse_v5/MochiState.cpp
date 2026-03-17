@@ -9,6 +9,16 @@ void MochiState::begin() {
   loadSettings(); // Loads Json Settings
 }
 
+uint16_t hexToRGB565(const char* hexStr) {
+    if (!hexStr) return 0xFFFF; // Sicurezza extra se è nullo
+    if (hexStr[0] == '#') hexStr++;
+    long rgb = strtol(hexStr, NULL, 16);
+    uint8_t r = (rgb >> 16) & 0xFF;
+    uint8_t g = (rgb >> 8) & 0xFF;
+    uint8_t b = rgb & 0xFF;
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
 // ==========================================
 // LOGICA MEMORIA
 // ==========================================
@@ -372,14 +382,4 @@ void MochiState::killMochi() {
   prefs.clear();
   prefs.end();
   Serial.println("Memoria Mochi resettata!");
-}
-
-// Funzione helper per convertire colore Web (#FFA0C8) a colore Display (RGB565)
-uint16_t hexToRGB565(const char* hexStr) {
-    if (hexStr[0] == '#') hexStr++;
-    long rgb = strtol(hexStr, NULL, 16);
-    uint8_t r = (rgb >> 16) & 0xFF;
-    uint8_t g = (rgb >> 8) & 0xFF;
-    uint8_t b = rgb & 0xFF;
-    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
