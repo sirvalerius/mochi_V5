@@ -24,6 +24,7 @@ public:
     // Ripristinate le funzioni originali
     void scanForFriends();
     bool isConnected();
+    void pushState();
 };
 
 #endif // MOCHI_BLE_H

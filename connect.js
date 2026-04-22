@@ -151,17 +151,13 @@ function updateStatsUI(data) {
 
 async function downloadState() {
     await sendCmd("get_state");
-    await new Promise(r => setTimeout(r, 200));
-    const raw = await mochiCharacteristic.readValue();
-    try {
-        const data = JSON.parse(new TextDecoder().decode(raw));
-        updateStatsUI(data);
-    } catch(e) { console.warn("get_state parse error", e); }
+    // handleNotifications receives the response and calls updateStatsUI
 }
 
 async function onConnected(name) {
 
-    await Promise.all([downloadSettings(), downloadState()]);
+    await downloadSettings();
+    await downloadState();
 
     statusText.innerHTML = `<span class="status-dot online"></span> Connesso: ${name}`;
 	

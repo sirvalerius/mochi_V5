@@ -217,7 +217,10 @@ void loop() {
     mg.tick(now, justPressed, btnHeld, justReleased);
     view->drawMinigame(mg, now);
     if (mg.complete) {
-      if (mg.success) mochi.gainFromMinigame(mochi.pendingAction, mg.score);
+      if (mg.success) {
+        mochi.gainFromMinigame(mochi.pendingAction, mg.score);
+        ble->pushState();
+      }
       mochi.minigamePlayedThisSlot = true;
       lastMinigameSuccess = mg.success;
       sysState     = STATE_MINIGAME_RESULT;

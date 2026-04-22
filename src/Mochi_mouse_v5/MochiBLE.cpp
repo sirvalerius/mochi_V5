@@ -147,3 +147,10 @@ bool MochiBLE::isConnected() {
     }
     return false;
 }
+
+void MochiBLE::pushState() {
+    if (!isConnected() || !pCharacteristic) return;
+    String state = mochi->getStateJson();
+    pCharacteristic->setValue(state.c_str());
+    pCharacteristic->notify();
+}
