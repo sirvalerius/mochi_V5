@@ -71,6 +71,7 @@ public:
   unsigned long bubbleShowTime = 0;
 
   bool isAutoClickActive = false;
+  bool minigamePlayedThisSlot = false;
 
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;

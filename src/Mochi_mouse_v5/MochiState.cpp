@@ -377,7 +377,9 @@ void MochiState::triggerBubble(char type) {
 }
 
 void MochiState::updateBubbles() {
-    if (isBubbleVisible && (millis() - bubbleShowTime > 2500)) {
+    if (!isBubbleVisible) return;
+    if (bubbleType == '!' && pendingAction != ACTION_NONE) return; // stay visible while action pending
+    if (millis() - bubbleShowTime > 2500) {
         isBubbleVisible = false;
     }
 }
@@ -393,6 +395,7 @@ bool MochiState::timeForAction() {
 
 void MochiState::resetTimer() {
   lastActionTime = millis();
+  minigamePlayedThisSlot = false;
 }
 
 void MochiState::toggleAutoclick() {

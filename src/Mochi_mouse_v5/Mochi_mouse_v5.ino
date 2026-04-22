@@ -218,7 +218,7 @@ void loop() {
     view->drawMinigame(mg, now);
     if (mg.complete) {
       if (mg.success) mochi.gainFromMinigame(mochi.pendingAction, mg.score);
-      mochi.pendingAction = ACTION_NONE;
+      mochi.minigamePlayedThisSlot = true;
       lastMinigameSuccess = mg.success;
       sysState     = STATE_MINIGAME_RESULT;
       animStartTime = now;
@@ -267,7 +267,8 @@ void loop() {
   }
 
   // --- BUTTON: launch minigame for queued action ---
-  if (justPressed && mochi.pendingAction != ACTION_NONE) {
+  mochi.updateBubbles();
+  if (justPressed && mochi.pendingAction != ACTION_NONE && !mochi.minigamePlayedThisSlot) {
     MinigameType mgType = MG_NONE;
     switch (mochi.pendingAction) {
       case ACTION_FEED:      mgType = MG_CHEW;     break;
