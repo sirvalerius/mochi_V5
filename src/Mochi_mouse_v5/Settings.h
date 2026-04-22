@@ -50,6 +50,13 @@
 #define ACTION_INTERVAL 300000 // 5 minuti
 #define STATE_COOLDOWN  60000  // 1 minuto
 
+// --- BUTTON ---
+#define PIN_BTN        0   // BOOT button, active LOW
+
+// --- STATS ---
+#define MAX_STAT       99
+#define STAT_GAIN      8   // max points earned per successful minigame
+
 // --- RETE WIFI (Nuovo!) ---
 #define WIFI_SSID "Mochi_Net"
 #define WIFI_PASS "mochi123" // Password (min 8 caratteri)

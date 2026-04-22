@@ -2,12 +2,13 @@
 #define MOCHI_VIEW_H
 
 #ifndef MOCHI_VERSION
-  #define MOCHI_VERSION "0.0.0--DEV" 
+  #define MOCHI_VERSION "0.0.0--DEV"
 #endif
 
 #include <LovyanGFX.hpp>
 #include "Settings.h"
 #include "MochiState.h"
+#include "MochiMinigame.h"
 
 class MochiView {
 private:
@@ -21,9 +22,9 @@ private:
   uint16_t currentBgBottom;
 
   // Helper privati
-  void drawBackground(); 
-  void drawBubble(int cx, int cy, int w, int h, char type); 
-  void drawUI(MochiState &state, bool connected);
+  void drawBackground();
+  void drawBubble(int cx, int cy, int w, int h, char type);
+  void drawUI(MochiState &state, bool connected, float animAngle);
   void drawDebugInfo(MochiState &state);
   void drawGhostMochi(int yOff);
   void drawEgg(int cx, int cy, float animAngle, float crackProgress = 0.0f);
@@ -31,15 +32,26 @@ private:
   void drawEyes(int cx, int cy, int spacingX, int yOffset, int rX, int rY, bool wink, AgeStage stage);
   void drawAdaptiveMochi(int cx, int cy, int w, int h, uint16_t bodyColor, AgeStage stage, bool wink, bool heart, bool bubble, char bType);
 
+  // Minigame helpers
+  void drawMgTitle(int x, const char* title);
+  void drawMgMochi(int cx, int cy, int w, int h, bool mouthOpen, bool bigEyes);
+  void drawMgChew    (MochiMinigame &mg, unsigned long now);
+  void drawMgSurprise(MochiMinigame &mg, unsigned long now);
+  void drawMgMash    (MochiMinigame &mg, unsigned long now);
+  void drawMgReact   (MochiMinigame &mg, unsigned long now);
+  void drawMgCount   (MochiMinigame &mg, unsigned long now);
+  void drawMgHold    (MochiMinigame &mg, unsigned long now);
+
 public:
   MochiView(LGFX_Sprite* c);
   ~MochiView();
 
   // Metodi principali
   void render(MochiState &state, int yOff, float animAngle, bool wink, bool connected);
-  //void setBackgroundGradient(uint16_t topHex, uint16_t botHex);
   void setBackgroundColors(uint16_t top, uint16_t bottom);
   void drawGrowthFrame(float t, AgeStage from, AgeStage to);
+  void drawMinigame(MochiMinigame &mg, unsigned long now);
+  void drawMinigameResult(bool success);
 };
 
 #endif // MOCHI_VIEW_H

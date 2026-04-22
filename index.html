@@ -17,6 +17,16 @@
         .pet { background-color: #ff6b6b; }
         .kill { background-color: #ee5253; }
         .slide-btn { background-color: #4b7bec; }
+        .train-btn { background-color: #a29bfe; }
+        .queue-btn { background-color: #00cec9; }
+        .action-btn.active { outline: 3px solid #2d3436; outline-offset: 2px; opacity: 1 !important; }
+        .action-btn { opacity: 0.6; transition: opacity 0.2s, outline 0.2s; }
+
+        .stat-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+        .stat-label { font-size: 13px; font-weight: bold; color: #666; width: 36px; text-align: right; }
+        .stat-bar-bg { flex: 1; background: #eee; border-radius: 6px; height: 10px; overflow: hidden; }
+        .stat-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s; }
+        .stat-val { font-size: 12px; color: #aaa; width: 26px; }
 
         .status-text { font-size: 14px; margin-top: 10px; color: #888; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .status-dot { width: 10px; height: 10px; background-color: #ccc; border-radius: 50%; display: inline-block; }
@@ -63,6 +73,41 @@
         <button class="btn feed cmd-btn" data-cmd="FEED" disabled>🍕 Dai Pappa</button>
         <button class="btn pet cmd-btn"  data-cmd="PLAY" disabled>❤️ Fai Carezze</button>
         <button class="btn kill cmd-btn"  data-cmd="KILL" disabled>❤ Reset</button>
+
+        <h3>Allena Mochi</h3>
+        <p style="font-size:12px;color:#aaa;margin:-10px 0 10px;">Seleziona un'azione, poi premi il tasto fisico su Mochi</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="btn queue-btn cmd-btn action-btn" data-cmd="queue:FEED"      disabled>🍙 Cibo</button>
+            <button class="btn queue-btn cmd-btn action-btn" data-cmd="queue:PET"       disabled>🫶 Coccole</button>
+            <button class="btn train-btn cmd-btn action-btn" data-cmd="queue:TRAIN_STR" disabled>💪 STR</button>
+            <button class="btn train-btn cmd-btn action-btn" data-cmd="queue:TRAIN_SPD" disabled>⚡ SPD</button>
+            <button class="btn train-btn cmd-btn action-btn" data-cmd="queue:TRAIN_INT" disabled>🧠 INT</button>
+            <button class="btn train-btn cmd-btn action-btn" data-cmd="queue:TRAIN_CHR" disabled>✨ CHR</button>
+        </div>
+
+        <h3>Statistiche</h3>
+        <div id="stats-panel">
+            <div class="stat-row">
+                <span class="stat-label">STR</span>
+                <div class="stat-bar-bg"><div id="bar-str" class="stat-bar-fill" style="width:0%;background:#fd79a8;"></div></div>
+                <span class="stat-val" id="val-str">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">SPD</span>
+                <div class="stat-bar-bg"><div id="bar-spd" class="stat-bar-fill" style="width:0%;background:#fdcb6e;"></div></div>
+                <span class="stat-val" id="val-spd">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">INT</span>
+                <div class="stat-bar-bg"><div id="bar-int" class="stat-bar-fill" style="width:0%;background:#74b9ff;"></div></div>
+                <span class="stat-val" id="val-int">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">CHR</span>
+                <div class="stat-bar-bg"><div id="bar-chr" class="stat-bar-fill" style="width:0%;background:#55efc4;"></div></div>
+                <span class="stat-val" id="val-chr">-</span>
+            </div>
+        </div>
 
         <h3>Presentazione</h3>
         <div style="display: flex; gap: 10px;">
