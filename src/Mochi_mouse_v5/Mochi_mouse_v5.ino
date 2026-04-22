@@ -5,8 +5,9 @@
 #include "Settings.h"
 #include "DisplayDriver.h"
 #include "MochiState.h"
+#include "MochiMinigame.h"
 #include "MochiView.h"
-// #include "MochiServer.h" 
+// #include "MochiServer.h"
 #include "MochiBLE.h"
 
 // --- OGGETTI GLOBALI ---
@@ -16,27 +17,36 @@ USBHIDMouse Mouse;
 
 MochiState mochi;
 MochiView* view;
-// MochiServer* webServer; 
+// MochiServer* webServer;
 MochiBLE* ble;
+MochiMinigame mg;
 
 // Inizializzazione UNICA del LED
 Adafruit_NeoPixel statusLed(NUM_PIXELS, PIN_RGB, NEO_GRB + NEO_KHZ800);
 
 // --- MACCHINA A STATI PER LE ANIMAZIONI ---
 enum SystemState {
-  STATE_NORMAL,         
-  STATE_JUMPING,        
-  STATE_MOVING_MOUSE,   
-  STATE_DYING,          
-  STATE_DEAD_PAUSE,     
-  STATE_GROWING,        
-  STATE_GROWING_FLASH   
+  STATE_NORMAL,
+  STATE_JUMPING,
+  STATE_MOVING_MOUSE,
+  STATE_DYING,
+  STATE_DEAD_PAUSE,
+  STATE_GROWING,
+  STATE_GROWING_FLASH,
+  STATE_MINIGAME,
+  STATE_MINIGAME_RESULT
 };
 
 SystemState sysState = STATE_NORMAL;
 unsigned long animStartTime = 0;
 int animStep = 0;
 float animLx = 40.0, animLy = 0.0;
+bool lastMinigameSuccess = false;
+
+// --- BUTTON STATE ---
+static bool btnStable  = HIGH;
+static bool lastRaw    = HIGH;
+static unsigned long lastDebounce = 0;
 
 // --- FUNZIONI DI UTILITA' ---
 void avantiPresentazione() { Mouse.click(0x10); }
@@ -158,8 +168,10 @@ void setup() {
   mochi.begin();
   view = new MochiView(&canvas);
 
-  pinMode(PIN_BL, OUTPUT); 
+  pinMode(PIN_BL, OUTPUT);
   analogWrite(PIN_BL, mochi.screenBrightness);
+
+  pinMode(PIN_BTN, INPUT_PULLUP);
 
   // Inizializzazione LED Globale
   statusLed.begin();
@@ -183,11 +195,47 @@ void loop() {
   unsigned long now = millis();
   bool isConnected = true;
 
-  // 2. GESTIONE ANIMAZIONI (Uscita anticipata se in corso)
+  // --- BUTTON DEBOUNCE ---
+  bool rawBtn = digitalRead(PIN_BTN);
+  if (rawBtn != lastRaw) { lastDebounce = now; lastRaw = rawBtn; }
+  bool justPressed  = false;
+  bool justReleased = false;
+  if (now - lastDebounce > 50) {
+    if (btnStable != lastRaw) {
+      btnStable    = lastRaw;
+      justPressed  = (btnStable == LOW);
+      justReleased = (btnStable == HIGH);
+    }
+  }
+  bool btnHeld = (btnStable == LOW);
+
+  // --- MINIGAME STATE ---
+  if (sysState == STATE_MINIGAME) {
+    mg.tick(now, justPressed, btnHeld, justReleased);
+    view->drawMinigame(mg, now);
+    if (mg.complete) {
+      if (mg.success) mochi.gainFromMinigame(mochi.pendingAction, mg.score);
+      mochi.pendingAction = ACTION_NONE;
+      lastMinigameSuccess = mg.success;
+      sysState     = STATE_MINIGAME_RESULT;
+      animStartTime = now;
+    }
+    delay(15);
+    return;
+  }
+
+  if (sysState == STATE_MINIGAME_RESULT) {
+    if (now - animStartTime >= 1500) { sysState = STATE_NORMAL; }
+    else { view->drawMinigameResult(lastMinigameSuccess); }
+    delay(15);
+    return;
+  }
+
+  // --- ANIMAZIONI STANDARD (Uscita anticipata se in corso) ---
   if (sysState != STATE_NORMAL) {
     handleAnimations(now);
     delay(15);
-    return; 
+    return;
   }
 
   // 3. INTERCETTAZIONE TRIGGER STATI SPECIALI
@@ -213,6 +261,26 @@ void loop() {
      mochi.lastCommand = ""; 
   } else {
      mochi.triggerHeart(); 
+  }
+
+  // --- BUTTON: launch minigame for queued action ---
+  if (justPressed && mochi.pendingAction != ACTION_NONE) {
+    MinigameType mgType = MG_NONE;
+    switch (mochi.pendingAction) {
+      case ACTION_FEED:      mgType = MG_CHEW;     break;
+      case ACTION_PET:       mgType = MG_SURPRISE; break;
+      case ACTION_TRAIN_STR: mgType = MG_MASH;     break;
+      case ACTION_TRAIN_SPD: mgType = MG_REACT;    break;
+      case ACTION_TRAIN_INT: mgType = MG_COUNT;    break;
+      case ACTION_TRAIN_CHR: mgType = MG_HOLD;     break;
+      default: break;
+    }
+    if (mgType != MG_NONE) {
+      mg.begin(mgType, now);
+      sysState = STATE_MINIGAME;
+      delay(15);
+      return;
+    }
   }
 
   // Calcolo Animazione Base (Respiro/Rimbalzo)

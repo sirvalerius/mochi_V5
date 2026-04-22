@@ -139,15 +139,35 @@ async function connectToMochi() {
     }
 }
 
+function updateStatsUI(data) {
+    for (const key of ['str', 'spd', 'int', 'chr']) {
+        if (data[key] !== undefined) {
+            const val = data[key];
+            document.getElementById(`bar-${key}`).style.width = `${(val / 99) * 100}%`;
+            document.getElementById(`val-${key}`).innerText = val;
+        }
+    }
+}
+
+async function downloadState() {
+    await sendCmd("get_state");
+    await new Promise(r => setTimeout(r, 200));
+    const raw = await mochiCharacteristic.readValue();
+    try {
+        const data = JSON.parse(new TextDecoder().decode(raw));
+        updateStatsUI(data);
+    } catch(e) { console.warn("get_state parse error", e); }
+}
+
 async function onConnected(name) {
-	
-	await downloadSettings();
-	
+
+    await Promise.all([downloadSettings(), downloadState()]);
+
     statusText.innerHTML = `<span class="status-dot online"></span> Connesso: ${name}`;
 	
 	await mochiCharacteristic.startNotifications();
 	mochiCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
-		const value = new TextDecoder().decode(event.targer.value);
+		const value = new TextDecoder().decode(event.target.value);
 		console.log("[BLE RECEIVE] <-", value);
 		
 		if (value.startsWith('{')) {
@@ -275,10 +295,21 @@ async function saveAndUploadSettings() {
 btnConnect.onclick = connectToMochi;
 btnDisconnect.onclick = disconnectMochi;
 
+const actionButtons = document.querySelectorAll('.action-btn');
+
+function setActiveAction(btn) {
+    actionButtons.forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+}
+
 cmdButtons.forEach(btn => {
     btn.onclick = () => {
         const cmd = btn.getAttribute('data-cmd');
-        if (cmd) sendCmd(cmd);
+        if (!cmd) return;
+        if (cmd.startsWith('queue:')) {
+            setActiveAction(btn);
+        }
+        sendCmd(cmd);
     };
 });
 
@@ -288,20 +319,24 @@ function handleNotifications(event) {
     if (receivedString.startsWith("{")) {
         try {
             let syncData = JSON.parse(receivedString);
-            
-            // ECCO IL TUO LOG! Apparirà nella console premendo F12
-            console.log("%c📦 [BLE SYNC] Impostazioni ricevute da Mochi:", "color: #00d2ff; font-weight: bold; font-size: 14px;");
-            console.dir(syncData); 
-			
-			if(syncData.timezone) tzSelector.value = syncData.timezone;
-			if(syncData.bgTop && syncData.bgBottom) {
+            console.log("%c[BLE SYNC]", "color: #00d2ff; font-weight: bold;");
+            console.dir(syncData);
+
+            // Stats update (has "str" key)
+            if (syncData.str !== undefined) {
+                updateStatsUI(syncData);
+                return;
+            }
+
+            if(syncData.timezone) tzSelector.value = syncData.timezone;
+            if(syncData.bgTop && syncData.bgBottom) {
                 applyBackgroundColors(syncData.bgTop, syncData.bgBottom);
             }
-			if(syncData.brightness.brightness) {
-				sliderBrightness.value = syncData.brightness.brightness;
-				brightnessVal.innerText = Math.round((syncData.brightness.brightness / 255) * 100);
-				localStorage.setItem('brightness', syncData.brightness.brightness);
-			}
+            if(syncData.brightness) {
+                sliderBrightness.value = syncData.brightness;
+                brightnessVal.innerText = Math.round((syncData.brightness / 255) * 100);
+                localStorage.setItem('brightness', syncData.brightness);
+            }
             
             // Qui poi aggiornerai l'interfaccia (Fuso orario, Colori, ecc.)
 

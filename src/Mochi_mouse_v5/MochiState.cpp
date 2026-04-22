@@ -26,10 +26,14 @@ uint16_t hexToRGB565(const char* hexStr) {
 void MochiState::loadState() {
   if (prefs.begin("mochi-data", false)) {
     hunger = prefs.getFloat("hunger", 50.0f);
-    happy = prefs.getFloat("happy", 50.0f);
-    currentAge = (AgeStage)prefs.getInt("age", (int)ADULT);
-    baseUnixTime = prefs.getULong("savedTime", 1700000000); // 1700... è un default recente
-    syncMillis = millis(); // Ripartiamo a contare da qui
+    happy  = prefs.getFloat("happy",  50.0f);
+    statStr = prefs.getInt("statStr", 0);
+    statSpd = prefs.getInt("statSpd", 0);
+    statInt = prefs.getInt("statInt", 0);
+    statChr = prefs.getInt("statChr", 0);
+    currentAge   = (AgeStage)prefs.getInt("age", (int)ADULT);
+    baseUnixTime = prefs.getULong("savedTime", 1700000000);
+    syncMillis   = millis();
     prefs.end();
     Serial.println("Dati caricati correttamente!");
   } else {
@@ -41,7 +45,11 @@ void MochiState::loadState() {
 void MochiState::saveState() {
   prefs.begin("mochi-data", false);
   prefs.putFloat("hunger", hunger);
-  prefs.putFloat("happy", happy);
+  prefs.putFloat("happy",  happy);
+  prefs.putInt("statStr", statStr);
+  prefs.putInt("statSpd", statSpd);
+  prefs.putInt("statInt", statInt);
+  prefs.putInt("statChr", statChr);
   prefs.putInt("age", (int)currentAge);
   unsigned long currentUnix = baseUnixTime + ((millis() - syncMillis) / 1000);
   prefs.putULong("savedTime", currentUnix);
@@ -276,16 +284,22 @@ int MochiState::getMissedIncrements(time_t newUnixTime) {
 }
 
 void MochiState::applyCommand(String cmd) {
+  if (cmd.startsWith("queue:")) {
+    queueAction(cmd.substring(6));
+    return;
+  }
+  if (cmd == "get_state") return; // handled by BLE layer
+
   lastCommand = cmd;
   commandFeedbackTime = millis();
-  if (cmd == "FEED") hunger += 20.0; 
+  if (cmd == "FEED") hunger += 20.0;
   else if (cmd == "PLAY") happy += 20.0;
   else if (cmd == "KILL") {
     isDying = true;
     return;
   } else if (cmd == "GROW") {
     growUp();
-    return; 
+    return;
   } else if (cmd == "prev" || cmd == "next") {
     toggleAutoclick();
   }
@@ -295,6 +309,49 @@ void MochiState::applyCommand(String cmd) {
 
   saveState();
   triggerHeart();
+}
+
+void MochiState::queueAction(String action) {
+  if      (action == "FEED")      pendingAction = ACTION_FEED;
+  else if (action == "PET")       pendingAction = ACTION_PET;
+  else if (action == "TRAIN_STR") pendingAction = ACTION_TRAIN_STR;
+  else if (action == "TRAIN_SPD") pendingAction = ACTION_TRAIN_SPD;
+  else if (action == "TRAIN_INT") pendingAction = ACTION_TRAIN_INT;
+  else if (action == "TRAIN_CHR") pendingAction = ACTION_TRAIN_CHR;
+  triggerBubble('!');
+}
+
+void MochiState::gainFromMinigame(PendingAction action, int score) {
+  switch (action) {
+    case ACTION_FEED: hunger = min((float)MAX_VAL, hunger + 20.0f); break;
+    case ACTION_PET:  happy  = min((float)MAX_VAL, happy  + 20.0f); break;
+    default: {
+      int gain = max(2, (score * STAT_GAIN) / 100);
+      switch (action) {
+        case ACTION_TRAIN_STR: statStr = min(MAX_STAT, statStr + gain); break;
+        case ACTION_TRAIN_SPD: statSpd = min(MAX_STAT, statSpd + gain); break;
+        case ACTION_TRAIN_INT: statInt = min(MAX_STAT, statInt + gain); break;
+        case ACTION_TRAIN_CHR: statChr = min(MAX_STAT, statChr + gain); break;
+        default: break;
+      }
+    }
+  }
+  saveState();
+  triggerHeart();
+}
+
+String MochiState::getStateJson() {
+  static StaticJsonDocument<192> doc;
+  doc.clear();
+  doc["hunger"] = (int)hunger;
+  doc["happy"]  = (int)happy;
+  doc["str"]    = statStr;
+  doc["spd"]    = statSpd;
+  doc["int"]    = statInt;
+  doc["chr"]    = statChr;
+  String out;
+  serializeJson(doc, out);
+  return out;
 }
 
 void MochiState::triggerHeart() {

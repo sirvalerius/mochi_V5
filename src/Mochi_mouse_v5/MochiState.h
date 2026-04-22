@@ -12,6 +12,16 @@ enum AgeStage {
   ELDER
 };
 
+enum PendingAction {
+  ACTION_NONE,
+  ACTION_FEED,
+  ACTION_PET,
+  ACTION_TRAIN_STR,
+  ACTION_TRAIN_SPD,
+  ACTION_TRAIN_INT,
+  ACTION_TRAIN_CHR
+};
+
 class MochiState {
 private:
   Preferences prefs; // Oggetto per gestire i salvataggi
@@ -35,6 +45,13 @@ private:
 public:
   float hunger;
   float happy;
+  int   statStr = 0;
+  int   statSpd = 0;
+  int   statInt = 0;
+  int   statChr = 0;
+
+  PendingAction pendingAction = ACTION_NONE;
+
   unsigned long lastActionTime = 0;
 
   String settingsBlob = "{}"; // Default: JSON vuoto
@@ -88,6 +105,9 @@ public:
   void applyTick();
   void applyCommand(String cmd);
   void recharge();
+  void queueAction(String action);
+  void gainFromMinigame(PendingAction action, int score);
+  String getStateJson();
   
   // --- GESTIONE EFFETTI VISIVI ---
   void triggerHeart();

@@ -54,15 +54,17 @@ public:
                 pCharacteristic->notify();
                 Serial.println("Settings inviati al browser.");
             } else if (cmd == "get_settings") {
-                // Prende il JSON salvato in MochiState (che tu chiami settingsBlob)
-                String reply = statePtr->settingsBlob; 
-
-                // Imposta il valore e "notifica" il browser (questo fa scattare il Listener!)
+                String reply = statePtr->settingsBlob;
                 pCharacteristic->setValue(reply.c_str());
-                pCharacteristic->notify(); 
-                
+                pCharacteristic->notify();
                 Serial.println("[BLE] Impostazioni inviate al browser!");
-                return; // Esce per non processarlo come un comando normale
+                return;
+            } else if (cmd == "get_state") {
+                String reply = statePtr->getStateJson();
+                pCharacteristic->setValue(reply.c_str());
+                pCharacteristic->notify();
+                Serial.println("[BLE] Stato inviato al browser!");
+                return;
             } else {
                 statePtr->applyCommand(cmd);
             }

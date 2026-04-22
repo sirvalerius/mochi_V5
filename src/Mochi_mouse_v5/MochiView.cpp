@@ -25,24 +25,28 @@ void MochiView::render(MochiState &state, int yOff, float animAngle, bool wink, 
   drawBackground();
 
   if (state.isDying) {
-    drawGhostMochi(yOff); 
+    drawGhostMochi(yOff);
   } else {
-    drawUI(state, connected);
-    
-    // Se è un uovo, disegniamo solo l'uovo saltando occhi, rughe e bocca
+    drawUI(state, connected, animAngle);
+
     if (state.currentAge == EGG) {
         drawEgg(160, 86, animAngle);
-    } 
-    // Altrimenti procediamo con il Mochi normale
-    else {
-        int w = 100, h = 80; // Default Adulto
+    } else {
+        int w = 100, h = 80;
         uint16_t color = K_WHITE;
-        
-        if (state.currentAge == BABY) {
-          w = 70; h = 55; 
-        } else if (state.currentAge == ELDER) { color = K_ELDER_BODY; }
-        
+        if (state.currentAge == BABY)  { w = 70; h = 55; }
+        else if (state.currentAge == ELDER) { color = K_ELDER_BODY; }
         drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
+    }
+
+    // Pending action indicator — pulsing "PRESS BTN" label
+    if (state.pendingAction != ACTION_NONE) {
+      float pulse = (sin(animAngle * 4.0f) + 1.0f) / 2.0f;
+      uint8_t bright = (uint8_t)(80 + pulse * 175);
+      canvas->setTextColor(canvas->color565(0, bright, bright));
+      canvas->setTextSize(1);
+      canvas->setCursor(108, 155);
+      canvas->print("[ PRESS BTN ]");
     }
   }
 
@@ -160,7 +164,7 @@ void MochiView::drawBackground() {
   }
 }
 
-void MochiView::drawUI(MochiState &state, bool connected) {
+void MochiView::drawUI(MochiState &state, bool connected, float animAngle) {
   // Icone
   canvas->drawLine(11, 10, 8, 14, K_BG_1);
   canvas->drawLine(8, 14, 12, 14, K_BG_1);
@@ -395,9 +399,240 @@ void MochiView::drawBubble(int cx, int cy, int w, int h, char type) {
   canvas->drawLine(bx, by + 8, bx + 5, by + 12, K_EYE);
   canvas->drawLine(bx + 10, by + 8, bx + 5, by + 12, K_EYE);
 
-  // Testo 
+  // Testo
   canvas->setTextColor(K_EYE);
   canvas->setTextSize(1);
   canvas->setCursor(bx - 3, by - 4);
   canvas->print(type);
+}
+
+// ==========================================
+// MINIGAME RENDERING
+// ==========================================
+
+void MochiView::drawMgTitle(int x, const char* title) {
+  canvas->setTextColor(K_EYE);
+  canvas->setTextSize(1);
+  canvas->setCursor(x, 3);
+  canvas->print(title);
+}
+
+// Compact Mochi used in all minigame screens
+void MochiView::drawMgMochi(int cx, int cy, int w, int h, bool mouthOpen, bool bigEyes) {
+  canvas->fillRoundRect(cx - w/2, cy - h/2, w, h, h * 0.4, K_WHITE);
+
+  int eyeRx = bigEyes ? (w * 0.13) : (w * 0.09);
+  int eyeRy = bigEyes ? (h * 0.22) : (h * 0.16);
+  int sx    = w * 0.26;
+  int eyeY  = cy - (int)(h * 0.07);
+
+  canvas->fillEllipse(cx - sx, eyeY, eyeRx, eyeRy, K_EYE);
+  canvas->fillEllipse(cx + sx, eyeY, eyeRx, eyeRy, K_EYE);
+
+  canvas->fillCircle(cx - (int)(w * 0.38), cy + (int)(h * 0.10), 3, K_BLUSH);
+  canvas->fillCircle(cx + (int)(w * 0.38), cy + (int)(h * 0.10), 3, K_BLUSH);
+
+  if (mouthOpen) {
+    canvas->fillEllipse(cx, cy + (int)(h * 0.22), (int)(w * 0.12), (int)(h * 0.10), K_EYE);
+  }
+}
+
+// ---- Dispatch ----
+void MochiView::drawMinigame(MochiMinigame &mg, unsigned long now) {
+  drawBackground();
+  switch (mg.type) {
+    case MG_CHEW:     drawMgChew    (mg, now); break;
+    case MG_SURPRISE: drawMgSurprise(mg, now); break;
+    case MG_MASH:     drawMgMash    (mg, now); break;
+    case MG_REACT:    drawMgReact   (mg, now); break;
+    case MG_COUNT:    drawMgCount   (mg, now); break;
+    case MG_HOLD:     drawMgHold    (mg, now); break;
+    default: break;
+  }
+  canvas->pushSprite(0, 0);
+}
+
+void MochiView::drawMinigameResult(bool success) {
+  drawBackground();
+  canvas->setTextSize(3);
+  if (success) {
+    canvas->setTextColor(canvas->color565(60, 200, 60));
+    canvas->setCursor(115, 55);
+    canvas->print("NICE!");
+    // heart
+    int cx = 160, cy = 115;
+    canvas->fillCircle(cx - 10, cy, 10, K_HEART);
+    canvas->fillCircle(cx + 10, cy, 10, K_HEART);
+    canvas->fillTriangle(cx - 20, cy, cx + 20, cy, cx, cy + 18, K_HEART);
+  } else {
+    canvas->setTextColor(canvas->color565(220, 70, 70));
+    canvas->setCursor(108, 55);
+    canvas->print("MISS!");
+    int cx = 160, cy = 110;
+    canvas->drawLine(cx - 14, cy - 14, cx + 14, cy + 14, K_EYE);
+    canvas->drawLine(cx + 14, cy - 14, cx - 14, cy + 14, K_EYE);
+  }
+  canvas->pushSprite(0, 0);
+}
+
+// ---- CHEW ----
+void MochiView::drawMgChew(MochiMinigame &mg, unsigned long now) {
+  unsigned long elapsed = now - mg.startTime;
+  float beatPhase = (float)(elapsed % 700UL) / 700.0f;
+
+  drawMgTitle(127, "CHEW!");
+
+  drawMgMochi(95, 86, 52, 40, mg.chewMouthOpen, false);
+
+  // Pulsing food item (rice ball)
+  int fr = 12 + (int)(sinf(beatPhase * (float)M_PI) * 4);
+  canvas->fillCircle(220, 86, fr, K_BG_1);
+  canvas->fillCircle(213, 81, 3, canvas->color565(190, 155, 70));
+  canvas->fillCircle(224, 91, 2, canvas->color565(190, 155, 70));
+
+  // Arrow when mouth is open
+  if (mg.chewMouthOpen) {
+    canvas->fillTriangle(138, 82, 138, 90, 129, 86, K_EYE);
+    for (int i = 0; i < 4; i++) canvas->drawFastHLine(141 + i*9, 86, 6, K_EYE);
+  }
+
+  // Hit counter top-right
+  canvas->setTextColor(canvas->color565(60, 200, 60)); canvas->setCursor(255, 3);
+  canvas->print(mg.chewHits); canvas->setTextColor(K_EYE); canvas->print("/8");
+
+  float t = min(1.0f, (float)elapsed / (8UL * 700UL));
+  canvas->fillRoundRect(15, 156, 290, 6, 3, K_PROG_BG);
+  canvas->fillRoundRect(15, 156, (int)(290.0f * t), 6, 3, K_PROG_FG);
+}
+
+// ---- SURPRISE ----
+void MochiView::drawMgSurprise(MochiMinigame &mg, unsigned long now) {
+  drawMgTitle(112, "SURPRISE!");
+
+  // Box (hiding place)
+  int bx = 120, bw = 80, by = 98, bh = 50;
+  canvas->fillRoundRect(bx, by, bw, bh, 8, canvas->color565(200, 170, 130));
+  canvas->drawRoundRect(bx, by, bw, bh, 8, canvas->color565(150, 120, 80));
+  canvas->fillRoundRect(bx + 5, by + 5, bw - 10, 8, 3, canvas->color565(240, 210, 160));
+
+  if (mg.surprisePeeking) {
+    // Mochi peeking above the box
+    drawMgMochi(160, 82, 50, 38, false, true);
+    canvas->setTextSize(2);
+    canvas->setTextColor(K_HEART);
+    canvas->setCursor(215, 78); canvas->print("!");
+    canvas->setCursor(229, 72); canvas->print("!");
+  }
+
+  // Peek indicators top-right
+  for (int i = 0; i < 3; i++) {
+    uint16_t col = (i < mg.surprisePeeks)
+      ? (i < mg.surpriseHits ? canvas->color565(60,200,60) : canvas->color565(200,60,60))
+      : K_PROG_BG;
+    canvas->fillCircle(275 + i * 14, 10, 5, col);
+  }
+}
+
+// ---- MASH ----
+void MochiView::drawMgMash(MochiMinigame &mg, unsigned long now) {
+  drawMgTitle(127, "MASH!");
+
+  // Mochi bounces based on tap count
+  int bounce = (mg.mashCount % 2 == 0) ? 0 : -8;
+  drawMgMochi(160, 76 + bounce, 52, 40, false, false);
+
+  // Large tap count
+  canvas->setTextSize(4);
+  canvas->setTextColor(K_PROG_FG);
+  int numX = (mg.mashCount < 10) ? 148 : (mg.mashCount < 100) ? 130 : 112;
+  canvas->setCursor(numX, 108);
+  canvas->print(mg.mashCount);
+
+  // Countdown bar
+  unsigned long elapsed = now - mg.startTime;
+  float t = 1.0f - min(1.0f, (float)elapsed / 5000.0f);
+  canvas->fillRoundRect(15, 156, 290, 6, 3, K_PROG_BG);
+  canvas->fillRoundRect(15, 156, (int)(290.0f * t), 6, 3, K_BG_2);
+}
+
+// ---- REACT ----
+void MochiView::drawMgReact(MochiMinigame &mg, unsigned long now) {
+  drawMgTitle(120, "REACT!");
+
+  drawMgMochi(160, 80, 52, 40, false, !mg.reactWaiting);
+
+  canvas->setTextSize(2);
+  if (mg.reactDone) {
+    canvas->setTextColor(canvas->color565(60, 200, 60));
+    canvas->setCursor(100, 115);
+    canvas->print(mg.reactMs);
+    canvas->print(" ms");
+  } else if (mg.reactWaiting) {
+    canvas->setTextColor(canvas->color565(140, 140, 140));
+    canvas->setCursor(104, 115); canvas->print("WAIT...");
+  } else {
+    canvas->setTextColor(K_HEART);
+    canvas->setCursor(104, 115); canvas->print("TAP!!!");
+  }
+}
+
+// ---- COUNT ----
+void MochiView::drawMgCount(MochiMinigame &mg, unsigned long now) {
+  drawMgTitle(120, "COUNT!");
+
+  if (mg.countShowing) {
+    unsigned long elapsed = now - mg.startTime;
+    int bounceIdx = (int)(elapsed / 500UL);
+    float beatPh  = (float)(elapsed % 500UL) / 500.0f;
+    int yOff = (bounceIdx < mg.countTarget)
+              ? -(int)(sinf(beatPh * (float)M_PI) * 22)
+              : 0;
+    drawMgMochi(160, 82 + yOff, 52, 40, false, false);
+
+    for (int i = 0; i < mg.countTarget; i++) {
+      uint16_t col = (i < bounceIdx) ? K_PROG_FG : K_PROG_BG;
+      canvas->fillCircle(248 + i * 13, 10, 5, col);
+    }
+    canvas->setTextSize(2);
+    canvas->setTextColor(canvas->color565(150,150,150));
+    canvas->setCursor(120, 118); canvas->print("watch...");
+  } else {
+    drawMgMochi(160, 80, 52, 40, false, false);
+    canvas->setTextSize(3);
+    canvas->setTextColor(K_PROG_FG);
+    canvas->setCursor(118, 108); canvas->print(mg.countPlayer);
+    canvas->setTextSize(1);
+    canvas->setTextColor(K_EYE);
+    canvas->setCursor(118, 138); canvas->print("taps  (wait 2s to confirm)");
+  }
+}
+
+// ---- HOLD ----
+void MochiView::drawMgHold(MochiMinigame &mg, unsigned long now) {
+  drawMgTitle(127, "HOLD!");
+
+  drawMgMochi(90, 86, 52, 40, false, false);
+
+  // Horizontal bar: x 155 to 295, y 79-93 (h=14)
+  int bx = 155, bw = 140, by = 79, bh = 14;
+  canvas->fillRoundRect(bx, by, bw, bh, 4, K_PROG_BG);
+
+  int filled = (int)(mg.holdProgress * bw);
+  if (filled > 0) {
+    canvas->fillRoundRect(bx, by, filled, bh, 4, K_PROG_FG);
+  }
+
+  // Sweet spot zone (tolerance ±15%)
+  int ssX   = bx + (int)(mg.holdTarget * bw);
+  int tolPx = (int)(0.15f * bw);
+  canvas->fillRect(ssX - tolPx, by, tolPx * 2, bh, canvas->color565(255, 200, 60));
+  canvas->drawFastVLine(ssX, by - 3, bh + 6, canvas->color565(220, 100, 30));
+
+  canvas->setTextSize(1);
+  canvas->setTextColor(K_EYE);
+  if (!mg.holdActive) {
+    canvas->setCursor(165, 103); canvas->print("hold the button");
+  } else if (mg.holdDone) {
+    canvas->setCursor(180, 103); canvas->print("released!");
+  }
 }
