@@ -27,11 +27,12 @@ void MochiState::loadState() {
   if (prefs.begin("mochi-data", false)) {
     hunger = prefs.getFloat("hunger", 50.0f);
     happy  = prefs.getFloat("happy",  50.0f);
-    statStr = prefs.getInt("statStr", 0);
-    statSpd = prefs.getInt("statSpd", 0);
-    statInt = prefs.getInt("statInt", 0);
-    statChr = prefs.getInt("statChr", 0);
-    currentAge   = (AgeStage)prefs.getInt("age", (int)ADULT);
+    statStr       = prefs.getInt("statStr", 0);
+    statSpd       = prefs.getInt("statSpd", 0);
+    statInt       = prefs.getInt("statInt", 0);
+    statChr       = prefs.getInt("statChr", 0);
+    pendingAction = (PendingAction)prefs.getInt("pending", (int)ACTION_NONE);
+    currentAge    = (AgeStage)prefs.getInt("age", (int)ADULT);
     baseUnixTime = prefs.getULong("savedTime", 1700000000);
     syncMillis   = millis();
     prefs.end();
@@ -46,11 +47,12 @@ void MochiState::saveState() {
   prefs.begin("mochi-data", false);
   prefs.putFloat("hunger", hunger);
   prefs.putFloat("happy",  happy);
-  prefs.putInt("statStr", statStr);
-  prefs.putInt("statSpd", statSpd);
-  prefs.putInt("statInt", statInt);
-  prefs.putInt("statChr", statChr);
-  prefs.putInt("age", (int)currentAge);
+  prefs.putInt("statStr",  statStr);
+  prefs.putInt("statSpd",  statSpd);
+  prefs.putInt("statInt",  statInt);
+  prefs.putInt("statChr",  statChr);
+  prefs.putInt("pending",  (int)pendingAction);
+  prefs.putInt("age",      (int)currentAge);
   unsigned long currentUnix = baseUnixTime + ((millis() - syncMillis) / 1000);
   prefs.putULong("savedTime", currentUnix);
   prefs.putString("settings", settingsBlob);
@@ -318,6 +320,7 @@ void MochiState::queueAction(String action) {
   else if (action == "TRAIN_SPD") pendingAction = ACTION_TRAIN_SPD;
   else if (action == "TRAIN_INT") pendingAction = ACTION_TRAIN_INT;
   else if (action == "TRAIN_CHR") pendingAction = ACTION_TRAIN_CHR;
+  saveState();
   triggerBubble('!');
 }
 

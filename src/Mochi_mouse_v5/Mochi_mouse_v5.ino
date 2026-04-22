@@ -43,10 +43,18 @@ int animStep = 0;
 float animLx = 40.0, animLy = 0.0;
 bool lastMinigameSuccess = false;
 
-// --- BUTTON STATE ---
-static bool btnStable  = HIGH;
-static bool lastRaw    = HIGH;
-static unsigned long lastDebounce = 0;
+// --- BUTTON STATE (interrupt-driven) ---
+volatile bool btnFellFlag = false;
+volatile bool btnRoseFlag = false;
+volatile unsigned long lastISRTime = 0;
+
+void IRAM_ATTR btnISR() {
+  unsigned long t = millis();
+  if (t - lastISRTime < 50) return;
+  lastISRTime = t;
+  if (digitalRead(PIN_BTN) == LOW) btnFellFlag = true;
+  else btnRoseFlag = true;
+}
 
 // --- FUNZIONI DI UTILITA' ---
 void avantiPresentazione() { Mouse.click(0x10); }
@@ -172,6 +180,7 @@ void setup() {
   analogWrite(PIN_BL, mochi.screenBrightness);
 
   pinMode(PIN_BTN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(PIN_BTN), btnISR, CHANGE);
 
   // Inizializzazione LED Globale
   statusLed.begin();
@@ -195,19 +204,13 @@ void loop() {
   unsigned long now = millis();
   bool isConnected = true;
 
-  // --- BUTTON DEBOUNCE ---
-  bool rawBtn = digitalRead(PIN_BTN);
-  if (rawBtn != lastRaw) { lastDebounce = now; lastRaw = rawBtn; }
-  bool justPressed  = false;
-  bool justReleased = false;
-  if (now - lastDebounce > 50) {
-    if (btnStable != lastRaw) {
-      btnStable    = lastRaw;
-      justPressed  = (btnStable == LOW);
-      justReleased = (btnStable == HIGH);
-    }
-  }
-  bool btnHeld = (btnStable == LOW);
+  // --- BUTTON (ISR flags) ---
+  bool justPressed = false, justReleased = false;
+  noInterrupts();
+  if (btnFellFlag) { justPressed  = true; btnFellFlag = false; }
+  if (btnRoseFlag) { justReleased = true; btnRoseFlag = false; }
+  interrupts();
+  bool btnHeld = (digitalRead(PIN_BTN) == LOW);
 
   // --- MINIGAME STATE ---
   if (sysState == STATE_MINIGAME) {
