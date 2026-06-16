@@ -9,6 +9,7 @@
 #include "MochiView.h"
 // #include "MochiServer.h"
 #include "MochiBLE.h"
+#include "MochiNow.h"
 
 // --- OGGETTI GLOBALI ---
 LGFX_Waveshare display;
@@ -19,6 +20,7 @@ MochiState mochi;
 MochiView* view;
 // MochiServer* webServer;
 MochiBLE* ble;
+MochiNow* social;
 MochiMinigame mg;
 
 // Inizializzazione UNICA del LED
@@ -195,6 +197,11 @@ void setup() {
   ble = new MochiBLE(&mochi, &statusLed);
   ble->begin();
 
+  // Discovery e visite tra Mochi ora via ESP-NOW (BLE resta solo per la app)
+  social = new MochiNow(&mochi);
+  social->begin();
+  ble->attachSocial(social);
+
   mochi.resetTimer();
 }
 
@@ -295,12 +302,11 @@ void loop() {
   bool wink = (fmod(now, 5000) < 200);
   float animAngle = now / 200.0;
 
-  // --- DISCOVERY: scan async dei Mochi vicini (non bloccante) ---
-  ble->tickScan(now);
-  mochi.isFriendNearby = (ble->nearbyCount() > 0);
+  // --- SOCIAL (ESP-NOW): annuncio presenza, discovery vicini, logica visite ---
+  social->tick(now);
+  mochi.isFriendNearby = (social->nearbyCount() > 0);
 
-  // --- VISITE: eventuale partenza + scadenze (ritorno a casa / fine ospitalità) ---
-  ble->tickVisit(now);
+  // --- VISITE: scadenze (ritorno a casa / fine ospitalità) ---
   if (mochi.isAway && now >= mochi.awayUntil) mochi.returnHome();
   if (mochi.isHostingGuest && now >= mochi.guestUntil) mochi.guestLeaves();
 

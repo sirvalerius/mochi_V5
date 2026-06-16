@@ -57,10 +57,10 @@
 #define MAX_STAT       99
 #define STAT_GAIN      8   // max points earned per successful minigame
 
-// --- SOCIAL / DISCOVERY (Nuovo!) ---
-#define SCAN_INTERVAL_MS    30000   // Ogni quanto far partire uno scan
-#define SCAN_DURATION_S     3       // Durata di ogni scan async (secondi)
-#define NEARBY_TIMEOUT_MS   90000   // Dopo quanto un vicino è considerato "sparito"
+// --- SOCIAL / DISCOVERY (ESP-NOW) ---
+#define ESPNOW_CHANNEL      1       // Canale WiFi comune a tutti i Mochi per ESP-NOW
+#define ANNOUNCE_INTERVAL_MS 5000   // Ogni quanto un Mochi annuncia la propria presenza
+#define NEARBY_TIMEOUT_MS   30000   // Dopo quanto un vicino è considerato "sparito"
 #define MAX_NEARBY          8       // Numero massimo di vicini tracciati
 #define MAX_FRIENDS         16      // Numero massimo di amici memorizzabili
 
@@ -70,6 +70,7 @@
 #define VISIT_RSSI_MIN      -75     // Soglia di prossimità per partire (più alto = più vicino)
 #define VISIT_CHANCE        25      // Probabilità su 1000 ad ogni check (con amico in range)
 #define VISIT_CHECK_MS      15000   // Ogni quanto valutare una possibile partenza
+#define VISIT_ACK_TIMEOUT_MS 1500   // Quanto attendere l'ack prima di rinunciare alla partenza
 
 // --- RETE WIFI (Nuovo!) ---
 #define WIFI_SSID "Mochi_Net"

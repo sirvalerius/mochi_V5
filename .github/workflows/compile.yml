@@ -34,7 +34,7 @@ jobs:
 
       - name: Set Version Number
         run: |
-          BASE_VERSION="0.3.3"
+          BASE_VERSION="1.0.0"
           # Usa il run_number per l'incremento automatico
           PATCH=$(( ${{ github.run_number }} ))
           
@@ -50,7 +50,7 @@ jobs:
         run: |
           mkdir -p ./bin
           # Aggiunta la flag per esportare i binari uniti se supportato, altrimenti gestiamo dopo
-          arduino-cli compile --fqbn esp32:esp32:esp32s3 \
+          arduino-cli compile --fqbn esp32:esp32:esp32s3:PartitionScheme=huge_app \
             --build-property "build.usb_mode=1" \
             --build-property "compiler.cpp.extra_flags=-DMOCHI_VERSION=\"${{ env.NEW_VERSION }}\"" \
             --output-dir ./bin \
