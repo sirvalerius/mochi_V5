@@ -6,6 +6,7 @@
 #include <BLEServer.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
+#include <BLEClient.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <Adafruit_NeoPixel.h>
@@ -36,6 +37,12 @@ private:
     NearbyMochi   nearby[MAX_NEARBY];
     int           nearbyLen = 0;
 
+    // --- VISITE (ruolo central) ---
+    BLEClient*    pClient = nullptr;       // Riusato per ogni handover (no leak)
+    unsigned long lastVisitCheck = 0;      // Ultima valutazione di partenza
+    unsigned long lastVisitDepart = 0;     // Ultima partenza riuscita (per il cooldown)
+    bool          attemptVisit(NearbyMochi& target); // Connette e consegna l'ospite
+
 public:
     MochiBLE(MochiState* m, Adafruit_NeoPixel* led);
     void begin();
@@ -50,6 +57,9 @@ public:
     void pruneNearby(unsigned long now);        // Rimuove i vicini scaduti
     int  nearbyCount() const { return nearbyLen; }
     String getNearbyJson();                     // Lista vicini per la companion app
+
+    // --- VISITE ---
+    void tickVisit(unsigned long now);          // Valuta e avvia eventualmente una visita
 
     const String& getBleName() const { return bleName; }
 };

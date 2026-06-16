@@ -271,7 +271,7 @@ void loop() {
 
   // --- BUTTON: launch minigame for queued action ---
   mochi.updateBubbles();
-  if (justPressed && mochi.pendingAction != ACTION_NONE && !mochi.minigamePlayedThisSlot) {
+  if (justPressed && mochi.pendingAction != ACTION_NONE && !mochi.minigamePlayedThisSlot && !mochi.isAway) {
     MinigameType mgType = MG_NONE;
     switch (mochi.pendingAction) {
       case ACTION_FEED:      mgType = MG_CHEW;     break;
@@ -299,6 +299,11 @@ void loop() {
   ble->tickScan(now);
   mochi.isFriendNearby = (ble->nearbyCount() > 0);
 
+  // --- VISITE: eventuale partenza + scadenze (ritorno a casa / fine ospitalità) ---
+  ble->tickVisit(now);
+  if (mochi.isAway && now >= mochi.awayUntil) mochi.returnHome();
+  if (mochi.isHostingGuest && now >= mochi.guestUntil) mochi.guestLeaves();
+
   // Disegno a schermo
   // --- CONTROLLO AGGIORNAMENTO COLORI ---
   if (mochi.colorsUpdated) {
@@ -312,8 +317,8 @@ void loop() {
     performMouseClick();
   }
 
-  // Routine Automatica (Jiggler/Salti)
-  if (mochi.timeForAction()) {
+  // Routine Automatica (Jiggler/Salti) — in pausa mentre il Mochi è in visita
+  if (!mochi.isAway && mochi.timeForAction()) {
 
     mochi.resetTimer();
     mochi.applyTick();

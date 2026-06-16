@@ -433,6 +433,64 @@ String MochiState::getFriendsJson() {
   return out;
 }
 
+// ==========================================
+// VISITE
+// ==========================================
+
+// Snapshot del Mochi da inviare all'host quando parte in visita.
+String MochiState::getVisitPayloadJson(const String& selfId) {
+  StaticJsonDocument<192> doc;
+  doc["id"]     = selfId;
+  doc["age"]    = (int)currentAge;
+  doc["str"]    = statStr;
+  doc["spd"]    = statSpd;
+  doc["int"]    = statInt;
+  doc["chr"]    = statChr;
+  doc["hunger"] = (int)hunger;
+  doc["happy"]  = (int)happy;
+  String out;
+  serializeJson(doc, out);
+  return out;
+}
+
+void MochiState::goAway(const String& hostId, unsigned long durationMs) {
+  isAway = true;
+  awayHostId = hostId;
+  awayUntil = millis() + durationMs;
+  Serial.println("Parto in visita da: " + hostId);
+}
+
+void MochiState::returnHome() {
+  if (!isAway) return;
+  isAway = false;
+  awayHostId = "";
+  // Piccola gioia al rientro
+  triggerHeart();
+  Serial.println("Tornato a casa!");
+}
+
+// Accetta un ospite (payload = JSON inviato dal Mochi visitatore).
+bool MochiState::receiveGuest(const String& payload, unsigned long durationMs) {
+  if (isAway || isHostingGuest) return false; // Già occupato
+  StaticJsonDocument<192> doc;
+  if (deserializeJson(doc, payload)) return false; // JSON non valido
+  guestId  = String((const char*)(doc["id"] | ""));
+  if (guestId.length() == 0) return false;
+  guestAge = (AgeStage)((int)(doc["age"] | (int)ADULT));
+  isHostingGuest = true;
+  guestUntil = millis() + durationMs;
+  triggerHeart();
+  Serial.println("Ospite arrivato: " + guestId);
+  return true;
+}
+
+void MochiState::guestLeaves() {
+  if (!isHostingGuest) return;
+  isHostingGuest = false;
+  Serial.println("L'ospite " + guestId + " è tornato a casa.");
+  guestId = "";
+}
+
 void MochiState::triggerHeart() {
   // Solo logica casuale: se non è già visibile, c'è una piccola chance
   if (!isHeartVisible && random(5000) < 5) { // Ho abbassato un po' la probabilità

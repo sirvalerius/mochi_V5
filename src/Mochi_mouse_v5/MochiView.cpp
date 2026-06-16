@@ -26,6 +26,10 @@ void MochiView::render(MochiState &state, int yOff, float animAngle, bool wink, 
 
   if (state.isDying) {
     drawGhostMochi(yOff);
+  } else if (state.isAway) {
+    // Il Mochi è in visita altrove: niente pet, solo il cartello "TORNO SUBITO".
+    drawUI(state, connected, animAngle);
+    drawVisitorSign(state);
   } else {
     drawUI(state, connected, animAngle);
 
@@ -37,6 +41,11 @@ void MochiView::render(MochiState &state, int yOff, float animAngle, bool wink, 
         if (state.currentAge == BABY)  { w = 70; h = 55; }
         else if (state.currentAge == ELDER) { color = K_ELDER_BODY; }
         drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
+    }
+
+    // Ospite in visita: avatar più piccolo affiancato.
+    if (state.isHostingGuest) {
+        drawGuest(state);
     }
 
     // Pending action indicator: pulsing banner at bottom.
@@ -248,6 +257,48 @@ void MochiView::drawGhostMochi(int yOff) {
   // Occhio DX
   canvas->drawLine(cx + 15, cy - 15, cx + 35, cy + 5, K_GHOST_EYE);
   canvas->drawLine(cx + 35, cy - 15, cx + 15, cy + 5, K_GHOST_EYE);
+}
+
+// Cartello "TORNO SUBITO" mostrato mentre il Mochi è in visita altrove.
+void MochiView::drawVisitorSign(MochiState &state) {
+  int cx = 160, cy = 80;
+
+  // Palo del cartello
+  canvas->fillRect(cx - 3, cy - 5, 6, 60, K_WRINKLE);
+
+  // Tavola
+  canvas->fillRoundRect(cx - 70, cy - 45, 140, 46, 6, K_WHITE);
+  canvas->drawRoundRect(cx - 70, cy - 45, 140, 46, 6, K_EYE);
+
+  canvas->setTextColor(K_EYE);
+  canvas->setTextSize(2);
+  canvas->setCursor(cx - 30, cy - 38); canvas->print("TORNO");
+  canvas->setCursor(cx - 36, cy - 20); canvas->print("SUBITO");
+
+  // Countdown al rientro
+  unsigned long now = millis();
+  long rem = (state.awayUntil > now) ? (long)((state.awayUntil - now) / 1000) : 0;
+  canvas->setTextSize(1);
+  canvas->setTextColor(canvas->color565(90, 90, 90));
+  canvas->setCursor(cx - 40, cy + 22);
+  canvas->print("rientro tra ");
+  canvas->print(rem);
+  canvas->print("s");
+}
+
+// Avatar dell'ospite (il Mochi di un amico in visita), affiancato più piccolo.
+void MochiView::drawGuest(MochiState &state) {
+  AgeStage st = state.guestAge;
+  uint16_t color = (st == ELDER) ? K_ELDER_BODY : K_WHITE;
+  int gx = 255, gy = 120;
+
+  // Un eventuale ospite "uovo" lo disegniamo comunque come cucciolo.
+  drawAdaptiveMochi(gx, gy, 50, 40, color, (st == EGG ? BABY : st), false, false, false, '.');
+
+  canvas->setTextSize(1);
+  canvas->setTextColor(canvas->color565(90, 90, 90));
+  canvas->setCursor(gx - 18, gy - 34);
+  canvas->print("ospite");
 }
 
 void MochiView::drawEgg(int cx, int cy, float animAngle, float crackProgress) {

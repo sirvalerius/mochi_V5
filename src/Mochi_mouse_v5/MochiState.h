@@ -79,6 +79,17 @@ public:
   String friendIds[MAX_FRIENDS]; // ID degli amici (es. "Mochi-ABCD")
   int    friendCount = 0;
 
+  // --- VISITE (runtime, non persistite: un reboot riporta tutti a casa) ---
+  // Il mio Mochi è in visita altrove
+  bool          isAway = false;
+  String        awayHostId = "";
+  unsigned long awayUntil = 0;
+  // Sto ospitando il Mochi di un amico
+  bool          isHostingGuest = false;
+  String        guestId = "";
+  AgeStage      guestAge = ADULT;
+  unsigned long guestUntil = 0;
+
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;
 
@@ -109,6 +120,13 @@ public:
   bool   removeFriend(const String& id);
   bool   isFriend(const String& id);
   String getFriendsJson();
+
+  // --- VISITE ---
+  String getVisitPayloadJson(const String& selfId); // Snapshot da spedire all'host
+  void   goAway(const String& hostId, unsigned long durationMs);
+  void   returnHome();
+  bool   receiveGuest(const String& payload, unsigned long durationMs);
+  void   guestLeaves();
 
   // --- LOGICA ORARIO ---
   void syncTime(long unixTime);

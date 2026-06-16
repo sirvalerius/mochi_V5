@@ -27,6 +27,8 @@ private:
   void drawUI(MochiState &state, bool connected, float animAngle);
   void drawDebugInfo(MochiState &state);
   void drawGhostMochi(int yOff);
+  void drawVisitorSign(MochiState &state); // Cartello "TORNO SUBITO" quando il Mochi è via
+  void drawGuest(MochiState &state);       // Avatar dell'ospite in visita
   void drawEgg(int cx, int cy, float animAngle, float crackProgress = 0.0f);
   void drawWrinkles(int cx, int eyeY, int spacingX);
   void drawEyes(int cx, int cy, int spacingX, int yOffset, int rX, int rY, bool wink, AgeStage stage);

@@ -64,6 +64,13 @@
 #define MAX_NEARBY          8       // Numero massimo di vicini tracciati
 #define MAX_FRIENDS         16      // Numero massimo di amici memorizzabili
 
+// --- VISITE ---
+#define VISIT_DURATION_MS   120000  // Quanto dura una visita (2 min)
+#define VISIT_COOLDOWN_MS   600000  // Tempo minimo tra una partenza e l'altra (10 min)
+#define VISIT_RSSI_MIN      -75     // Soglia di prossimità per partire (più alto = più vicino)
+#define VISIT_CHANCE        25      // Probabilità su 1000 ad ogni check (con amico in range)
+#define VISIT_CHECK_MS      15000   // Ogni quanto valutare una possibile partenza
+
 // --- RETE WIFI (Nuovo!) ---
 #define WIFI_SSID "Mochi_Net"
 #define WIFI_PASS "mochi123" // Password (min 8 caratteri)

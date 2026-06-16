@@ -98,6 +98,13 @@ public:
             } else if (cmd.startsWith("del_friend:")) {
                 statePtr->removeFriend(cmd.substring(11));
                 return;
+            } else if (cmd.startsWith("visit:")) {
+                // Un altro Mochi ci sta consegnando il suo avatar come ospite.
+                bool ok = statePtr->receiveGuest(cmd.substring(6), VISIT_DURATION_MS);
+                // L'ack viene letto dal Mochi visitatore sulla stessa connessione.
+                pCharacteristic->setValue(ok ? "visit_ack:OK" : "visit_busy");
+                Serial.println(ok ? "[BLE] Ospite accettato!" : "[BLE] Visita rifiutata (occupato)");
+                return;
             } else {
                 statePtr->applyCommand(cmd);
             }
@@ -223,6 +230,71 @@ void MochiBLE::pruneNearby(unsigned long now) {
         }
     }
     nearbyLen = w;
+}
+
+// Valuta periodicamente se far partire il Mochi in visita da un amico vicino.
+void MochiBLE::tickVisit(unsigned long now) {
+    if (mochi == nullptr) return;
+    if (mochi->isAway || mochi->isHostingGuest) return; // Serializzazione: una cosa alla volta
+    if (lastVisitCheck != 0 && (now - lastVisitCheck) < VISIT_CHECK_MS) return;
+    lastVisitCheck = now;
+
+    // Cooldown tra una partenza e l'altra
+    if (lastVisitDepart != 0 && (now - lastVisitDepart) < VISIT_COOLDOWN_MS) return;
+
+    // Cerca l'amico vicino col segnale più forte sopra la soglia
+    int best = -1;
+    for (int i = 0; i < nearbyLen; i++) {
+        if (nearby[i].rssi >= VISIT_RSSI_MIN && mochi->isFriend(nearby[i].id)) {
+            if (best < 0 || nearby[i].rssi > nearby[best].rssi) best = i;
+        }
+    }
+    if (best < 0) return; // Nessun amico in range
+
+    // Tiro di probabilità (VISIT_CHANCE su 1000)
+    if (random(1000) >= VISIT_CHANCE) return;
+
+    attemptVisit(nearby[best]);
+}
+
+// Ruolo CENTRAL: connette all'host, consegna l'avatar, attende l'ack.
+bool MochiBLE::attemptVisit(NearbyMochi& target) {
+    if (mochi == nullptr) return false;
+
+    // Evita conflitti: ferma lo scan async prima di connettere come central.
+    if (scanning && pBLEScan) { pBLEScan->stop(); scanning = false; }
+
+    if (pClient == nullptr) pClient = BLEDevice::createClient();
+
+    Serial.println("[BLE] Tentativo di visita verso " + target.id);
+    // Timeout finito: senza, connect() bloccherebbe all'infinito se il peer sparisce.
+    if (!pClient->connect(target.addr, 0xFF, 4000)) {
+        Serial.println("[BLE] Connessione all'amico fallita.");
+        if (pClient->isConnected()) pClient->disconnect();
+        return false;
+    }
+
+    bool sent = false;
+    BLERemoteService* svc = pClient->getService(SERVICE_UUID);
+    if (svc) {
+        BLERemoteCharacteristic* ch = svc->getCharacteristic(CHARACTERISTIC_UUID);
+        if (ch && ch->canWrite()) {
+            String payload = "visit:" + mochi->getVisitPayloadJson(bleName);
+            ch->writeValue((uint8_t*)payload.c_str(), payload.length(), true); // con response
+            // Leggi l'ack sulla stessa connessione: la partenza è atomica.
+            String ack = ch->canRead() ? String(ch->readValue().c_str()) : "";
+            if (ack.startsWith("visit_ack:OK")) {
+                mochi->goAway(target.id, VISIT_DURATION_MS);
+                sent = true;
+                Serial.println("[BLE] Visita accettata, parto!");
+            } else {
+                Serial.println("[BLE] Ack negativo (\"" + ack + "\"), resto a casa.");
+            }
+        }
+    }
+    pClient->disconnect();
+    if (sent) lastVisitDepart = millis();
+    return sent;
 }
 
 // Lista vicini in JSON per la companion app (con flag isFriend).
