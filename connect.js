@@ -19,6 +19,13 @@ const statusText = document.getElementById('status-text');
 const cmdButtons = document.querySelectorAll('.cmd-btn');
 const versionLabel = document.getElementById('version-label');
 
+// Riferimenti Amici
+const nearbyListEl = document.getElementById('nearby-list');
+const friendsListEl = document.getElementById('friends-list');
+const btnRefreshSocial = document.getElementById('btn-refresh-social');
+let lastArrayRequest = null;   // 'nearby' | 'friends' (disambigua gli array vuoti)
+let socialPollTimer = null;
+
 // Riferimenti Sidebar
 const btnSettings = document.getElementById('btn-settings');
 const settingsPanel = document.getElementById('settings-panel');
@@ -182,6 +189,11 @@ async function onConnected(name) {
     // Attesa per stabilità BLE prima della sync
     await new Promise(r => setTimeout(r, 1000));
     syncMochiTime();
+
+    // Avvia il polling di vicini e amici
+    pollSocial();
+    if (socialPollTimer) clearInterval(socialPollTimer);
+    socialPollTimer = setInterval(pollSocial, 5000);
 }
 
 sliderBrightness.addEventListener('input', (e) => {
@@ -244,6 +256,11 @@ function onDisconnected() {
     btnConnect.style.display = "block";
     btnDisconnect.style.display = "none";
     cmdButtons.forEach(b => b.setAttribute('disabled', 'true'));
+
+    // Ferma il polling social e svuota le liste
+    if (socialPollTimer) { clearInterval(socialPollTimer); socialPollTimer = null; }
+    nearbyListEl.innerHTML = '<p class="social-empty">Nessun Mochi vicino</p>';
+    friendsListEl.innerHTML = '<p class="social-empty">Nessun amico</p>';
 }
 
 async function disconnectMochi() {
@@ -309,9 +326,96 @@ cmdButtons.forEach(btn => {
     };
 });
 
+// Il tasto "Cerca vicini" ricarica entrambe le liste (sovrascrive l'handler generico).
+if (btnRefreshSocial) btnRefreshSocial.onclick = pollSocial;
+
+// --- AMICI ---
+
+// Chiede al Mochi sia la lista amici che i vicini (separati nel tempo per
+// non far interleavare le notifiche).
+async function pollSocial() {
+    if (!mochiCharacteristic) return;
+    lastArrayRequest = 'friends';
+    await sendCmd('get_friends');
+    await new Promise(r => setTimeout(r, 250));
+    lastArrayRequest = 'nearby';
+    await sendCmd('get_nearby');
+}
+
+// Invia un comando amico e poi ricarica le liste.
+async function socialAction(cmd) {
+    await sendCmd(cmd);
+    await new Promise(r => setTimeout(r, 250));
+    pollSocial();
+}
+
+function rssiDot(rssi) {
+    if (rssi >= -60) return '🟢';
+    if (rssi >= -75) return '🟡';
+    return '🔴';
+}
+
+function renderNearby(arr) {
+    nearbyListEl.innerHTML = '';
+    if (!arr.length) {
+        nearbyListEl.innerHTML = '<p class="social-empty">Nessun Mochi vicino</p>';
+        return;
+    }
+    arr.forEach(m => {
+        const row = document.createElement('div');
+        row.className = 'social-row';
+        row.innerHTML = `<span class="social-rssi">${rssiDot(m.rssi)}</span><span class="social-name">${m.id}</span>`;
+        const btn = document.createElement('button');
+        if (m.isFriend) {
+            btn.className = 'social-act del';
+            btn.textContent = 'Rimuovi';
+            btn.onclick = () => socialAction('del_friend:' + m.id);
+        } else {
+            btn.className = 'social-act add';
+            btn.textContent = 'Aggiungi';
+            btn.onclick = () => socialAction('add_friend:' + m.id);
+        }
+        row.appendChild(btn);
+        nearbyListEl.appendChild(row);
+    });
+}
+
+function renderFriends(arr) {
+    friendsListEl.innerHTML = '';
+    if (!arr.length) {
+        friendsListEl.innerHTML = '<p class="social-empty">Nessun amico</p>';
+        return;
+    }
+    arr.forEach(f => {
+        const row = document.createElement('div');
+        row.className = 'social-row';
+        row.innerHTML = `<span class="social-name">${f.id}</span>`;
+        const btn = document.createElement('button');
+        btn.className = 'social-act del';
+        btn.textContent = 'Rimuovi';
+        btn.onclick = () => socialAction('del_friend:' + f.id);
+        row.appendChild(btn);
+        friendsListEl.appendChild(row);
+    });
+}
+
 function handleNotifications(event) {
     let receivedString = new TextDecoder().decode(event.target.value);
-    
+
+    if (receivedString.startsWith("[")) {
+        try {
+            const arr = JSON.parse(receivedString);
+            // I vicini hanno il campo "rssi"; gli amici no. Per gli array vuoti
+            // ci affidiamo a quale richiesta è stata appena inviata.
+            const looksNearby = arr.length > 0 ? (arr[0].rssi !== undefined) : (lastArrayRequest === 'nearby');
+            if (looksNearby) renderNearby(arr);
+            else renderFriends(arr);
+        } catch (error) {
+            console.error("Errore parsing array social:", error);
+        }
+        return;
+    }
+
     if (receivedString.startsWith("{")) {
         try {
             let syncData = JSON.parse(receivedString);
