@@ -2,6 +2,10 @@
 #include <WiFi.h>
 #include <esp_wifi.h>
 
+#ifndef MOCHI_VERSION
+  #define MOCHI_VERSION "0.0.0-dev"
+#endif
+
 // Ponte verso l'istanza per la callback C di ricezione ESP-NOW.
 static MochiNow* g_now = nullptr;
 
@@ -13,6 +17,10 @@ static bool macEqual(const uint8_t* a, const uint8_t* b) {
 
 static void onRecvStatic(const esp_now_recv_info_t* info, const uint8_t* data, int len) {
     if (g_now) g_now->onRecv(info, data, len);
+}
+
+static void onSendStatic(const esp_now_send_info_t* tx_info, esp_now_send_status_t status) {
+    if (g_now) g_now->onSend(status == ESP_NOW_SEND_SUCCESS ? 0 : 1);
 }
 
 MochiNow::MochiNow(MochiState* m) {
@@ -38,6 +46,9 @@ bool MochiNow::begin() {
     // ESP-NOW richiede il WiFi in STA, senza connettersi ad alcun access point.
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
+    // CRUCIALE: senza disattivare il power-save il modem WiFi dorme e perde
+    // i pacchetti ESP-NOW in ricezione.
+    WiFi.setSleep(false);
     esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
     WiFi.macAddress(selfMac);
 
@@ -46,6 +57,7 @@ bool MochiNow::begin() {
         return false;
     }
     esp_now_register_recv_cb(onRecvStatic);
+    esp_now_register_send_cb(onSendStatic);
 
     // Peer broadcast per gli annunci di presenza.
     esp_now_peer_info_t peer = {};
@@ -75,6 +87,11 @@ void MochiNow::sendAnnounce() {
     pkt.type = PKT_ANNOUNCE;
     strncpy(pkt.id, selfId.c_str(), sizeof(pkt.id) - 1);
     esp_now_send(BCAST_MAC, (const uint8_t*)&pkt, sizeof(pkt));
+    announceCount++;
+}
+
+void MochiNow::onSend(int status) {
+    lastSendStatus = status;
 }
 
 void MochiNow::sendVisit(NearbyMochi& target) {
@@ -146,8 +163,11 @@ void MochiNow::onRecv(const esp_now_recv_info_t* info, const uint8_t* data, int 
     pkt.id[sizeof(pkt.id) - 1] = '\0';
     pkt.payload[sizeof(pkt.payload) - 1] = '\0';
 
+    recvCount++;
+
     String senderId = String(pkt.id);
     if (senderId.length() == 0 || senderId == selfId) return;
+    lastRecvId = senderId;
 
     int rssi = (info->rx_ctrl) ? info->rx_ctrl->rssi : 0;
 
@@ -227,5 +247,31 @@ String MochiNow::getNearbyJson() {
                ",\"isFriend\":" + (fr ? "true" : "false") + "}";
     }
     out += "]";
+    return out;
+}
+
+// Report diagnostico leggibile (prefisso "DBG" così la app lo riconosce).
+String MochiNow::getDebugReport() {
+    uint8_t primaryCh = 0; wifi_second_chan_t secondCh;
+    esp_wifi_get_channel(&primaryCh, &secondCh);
+
+    const char* sendStr = (lastSendStatus == -1) ? "mai" : (lastSendStatus == 0 ? "OK" : "FALLITO");
+
+    unsigned long now = millis();
+    String out = "DBG\n";
+    out += "build: " + String(MOCHI_VERSION) + "\n";
+    out += "id: " + selfId + "\n";
+    out += "espnow: " + String(ready ? "ready" : "OFF") + " ch" + String(primaryCh) + "\n";
+    out += "annunci inviati: " + String(announceCount) + " | ultimo invio: " + String(sendStr) + "\n";
+    out += "pacchetti ricevuti: " + String(recvCount) + " | ultimo da: " + (lastRecvId.length() ? lastRecvId : "-") + "\n";
+    out += "vicini (" + String(nearbyLen) + "):\n";
+    for (int i = 0; i < nearbyLen; i++) {
+        unsigned long ageS = (now - nearby[i].lastSeen) / 1000;
+        out += "  - " + nearby[i].id + " rssi " + String(nearby[i].rssi) +
+               " visto " + String(ageS) + "s fa\n";
+    }
+    out += "away: " + String(mochi->isAway ? "si" : "no") +
+           " | ospite: " + String(mochi->isHostingGuest ? "si" : "no") + "\n";
+    out += "heap libero: " + String(ESP.getFreeHeap());
     return out;
 }

@@ -48,6 +48,12 @@ private:
     String        pendingHostId = "";
     unsigned long pendingSentAt = 0;
 
+    // --- DIAGNOSTICA ---
+    unsigned long announceCount = 0; // Annunci broadcast inviati
+    unsigned long recvCount = 0;     // Pacchetti ESP-NOW ricevuti
+    int           lastSendStatus = -1; // -1=mai, 0=successo, 1=fallito
+    String        lastRecvId = "";   // ID dell'ultimo mittente
+
     void computeSelfId();
     void sendAnnounce();
     void sendVisit(NearbyMochi& target);
@@ -62,9 +68,11 @@ public:
     bool begin();
     void tick(unsigned long now);            // Annuncio + prune + logica visite
     void onRecv(const esp_now_recv_info_t* info, const uint8_t* data, int len);
+    void onSend(int status);                 // Esito invio (dalla send callback)
 
     int    nearbyCount() const { return nearbyLen; }
     String getNearbyJson();
+    String getDebugReport();                 // Report diagnostico per la companion app
     const String& getSelfId() const { return selfId; }
 };
 

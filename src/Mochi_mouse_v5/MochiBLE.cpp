@@ -88,6 +88,12 @@ public:
             } else if (cmd.startsWith("del_friend:")) {
                 statePtr->removeFriend(cmd.substring(11));
                 return;
+            } else if (cmd == "get_debug") {
+                String reply = g_social ? g_social->getDebugReport() : "DBG\nsocial non collegato";
+                pCharacteristic->setValue(reply.c_str());
+                pCharacteristic->notify();
+                Serial.println("[BLE] Report debug inviato al browser!");
+                return;
             } else {
                 statePtr->applyCommand(cmd);
             }

@@ -402,6 +402,14 @@ function renderFriends(arr) {
 function handleNotifications(event) {
     let receivedString = new TextDecoder().decode(event.target.value);
 
+    if (receivedString.startsWith("DBG")) {
+        const text = receivedString.replace(/^DBG\n?/, '');
+        const out = document.getElementById('debug-output');
+        if (out) out.textContent = text || '(vuoto)';
+        console.log("[BLE DEBUG]\n" + text);
+        return;
+    }
+
     if (receivedString.startsWith("[")) {
         try {
             const arr = JSON.parse(receivedString);

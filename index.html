@@ -65,6 +65,7 @@
         .social-act.add { background-color: #00cec9; }
         .social-act.del { background-color: #eb4d4b; }
         #btn-refresh-social { background-color: #a29bfe; padding: 10px; font-size: 14px; }
+        .debug-output { text-align: left; background: #2d3436; color: #dfe6e9; border-radius: 12px; padding: 12px; font-size: 12px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; overflow-x: auto; margin: 8px 0; }
     </style>
 </head>
 <body>
@@ -130,6 +131,10 @@
             <h4>I tuoi amici</h4>
             <div id="friends-list" class="social-list"><p class="social-empty">Nessun amico</p></div>
         </div>
+
+        <h3>Debug</h3>
+        <button id="btn-debug" class="btn cmd-btn" data-cmd="get_debug" style="background-color:#636e72;" disabled>🐞 Leggi stato ESP-NOW</button>
+        <pre id="debug-output" class="debug-output">—</pre>
 
         <h3>Presentazione</h3>
         <div style="display: flex; gap: 10px;">
