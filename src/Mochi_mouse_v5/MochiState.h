@@ -75,6 +75,10 @@ public:
 
   bool isFriendNearby = false; // Almeno un altro Mochi è nei paraggi (discovery)
 
+  // --- AMICI (persistiti) ---
+  String friendIds[MAX_FRIENDS]; // ID degli amici (es. "Mochi-ABCD")
+  int    friendCount = 0;
+
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;
 
@@ -97,6 +101,14 @@ public:
   void saveSettings(String newJson);
 
   void applySettings();            // Nuova funzione per applicare il JSON dei setting
+
+  // --- AMICI ---
+  void   loadFriends();
+  void   saveFriends();
+  bool   addFriend(const String& id);
+  bool   removeFriend(const String& id);
+  bool   isFriend(const String& id);
+  String getFriendsJson();
 
   // --- LOGICA ORARIO ---
   void syncTime(long unixTime);

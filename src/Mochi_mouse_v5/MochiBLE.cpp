@@ -86,6 +86,18 @@ public:
                 pCharacteristic->notify();
                 Serial.println("[BLE] Lista vicini inviata al browser!");
                 return;
+            } else if (cmd == "get_friends") {
+                String reply = statePtr->getFriendsJson();
+                pCharacteristic->setValue(reply.c_str());
+                pCharacteristic->notify();
+                Serial.println("[BLE] Lista amici inviata al browser!");
+                return;
+            } else if (cmd.startsWith("add_friend:")) {
+                statePtr->addFriend(cmd.substring(11));
+                return;
+            } else if (cmd.startsWith("del_friend:")) {
+                statePtr->removeFriend(cmd.substring(11));
+                return;
             } else {
                 statePtr->applyCommand(cmd);
             }
@@ -213,12 +225,14 @@ void MochiBLE::pruneNearby(unsigned long now) {
     nearbyLen = w;
 }
 
-// Lista vicini in JSON per la companion app.
+// Lista vicini in JSON per la companion app (con flag isFriend).
 String MochiBLE::getNearbyJson() {
     String out = "[";
     for (int i = 0; i < nearbyLen; i++) {
         if (i > 0) out += ",";
-        out += "{\"id\":\"" + nearby[i].id + "\",\"rssi\":" + String(nearby[i].rssi) + "}";
+        bool fr = mochi && mochi->isFriend(nearby[i].id);
+        out += "{\"id\":\"" + nearby[i].id + "\",\"rssi\":" + String(nearby[i].rssi) +
+               ",\"isFriend\":" + (fr ? "true" : "false") + "}";
     }
     out += "]";
     return out;

@@ -62,6 +62,7 @@
 #define SCAN_DURATION_S     3       // Durata di ogni scan async (secondi)
 #define NEARBY_TIMEOUT_MS   90000   // Dopo quanto un vicino è considerato "sparito"
 #define MAX_NEARBY          8       // Numero massimo di vicini tracciati
+#define MAX_FRIENDS         16      // Numero massimo di amici memorizzabili
 
 // --- RETE WIFI (Nuovo!) ---
 #define WIFI_SSID "Mochi_Net"

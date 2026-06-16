@@ -7,6 +7,7 @@ void MochiState::begin() {
   lastActionTime = millis();
   loadState();    // Loads hunger, happyness, etc
   loadSettings(); // Loads Json Settings
+  loadFriends();  // Loads friend list
 }
 
 uint16_t hexToRGB565(const char* hexStr) {
@@ -354,6 +355,81 @@ String MochiState::getStateJson() {
   doc["chr"]    = statChr;
   String out;
   serializeJson(doc, out);
+  return out;
+}
+
+// ==========================================
+// AMICI
+// ==========================================
+
+// Gli amici sono salvati come un'unica stringa con id separati da '\n'.
+void MochiState::loadFriends() {
+  prefs.begin("mochi-data", false);
+  String blob = prefs.getString("friends", "");
+  prefs.end();
+
+  friendCount = 0;
+  int start = 0;
+  while (start < blob.length() && friendCount < MAX_FRIENDS) {
+    int nl = blob.indexOf('\n', start);
+    if (nl < 0) nl = blob.length();
+    String id = blob.substring(start, nl);
+    id.trim();
+    if (id.length() > 0) friendIds[friendCount++] = id;
+    start = nl + 1;
+  }
+  Serial.println("Amici caricati: " + String(friendCount));
+}
+
+void MochiState::saveFriends() {
+  String blob = "";
+  for (int i = 0; i < friendCount; i++) {
+    if (i > 0) blob += "\n";
+    blob += friendIds[i];
+  }
+  prefs.begin("mochi-data", false);
+  prefs.putString("friends", blob);
+  prefs.end();
+}
+
+bool MochiState::addFriend(const String& id) {
+  if (id.length() == 0) return false;
+  if (isFriend(id)) return true;          // Già amico
+  if (friendCount >= MAX_FRIENDS) return false; // Lista piena
+  friendIds[friendCount++] = id;
+  saveFriends();
+  Serial.println("Amico aggiunto: " + id);
+  return true;
+}
+
+bool MochiState::removeFriend(const String& id) {
+  for (int i = 0; i < friendCount; i++) {
+    if (friendIds[i] == id) {
+      for (int j = i; j < friendCount - 1; j++) friendIds[j] = friendIds[j + 1];
+      friendCount--;
+      friendIds[friendCount] = "";
+      saveFriends();
+      Serial.println("Amico rimosso: " + id);
+      return true;
+    }
+  }
+  return false;
+}
+
+bool MochiState::isFriend(const String& id) {
+  for (int i = 0; i < friendCount; i++) {
+    if (friendIds[i] == id) return true;
+  }
+  return false;
+}
+
+String MochiState::getFriendsJson() {
+  String out = "[";
+  for (int i = 0; i < friendCount; i++) {
+    if (i > 0) out += ",";
+    out += "{\"id\":\"" + friendIds[i] + "\"}";
+  }
+  out += "]";
   return out;
 }
 
