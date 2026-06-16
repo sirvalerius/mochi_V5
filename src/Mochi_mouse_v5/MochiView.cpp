@@ -39,8 +39,10 @@ void MochiView::render(MochiState &state, int yOff, float animAngle, bool wink, 
         drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
     }
 
-    // Pending action indicator: pulsing banner at bottom
-    if (state.pendingAction != ACTION_NONE) {
+    // Pending action indicator: pulsing banner at bottom.
+    // Mostra/lampeggia solo quando il minigame e' di nuovo disponibile
+    // (stessa condizione che permette di lanciarlo col bottone).
+    if (state.pendingAction != ACTION_NONE && !state.minigamePlayedThisSlot) {
       const char* labels[] = { "", "FEED", "PET", "STR", "SPD", "INT", "CHR" };
       const char* label = labels[(int)state.pendingAction];
       float pulse = (sinf(animAngle * 4.0f) + 1.0f) / 2.0f;
