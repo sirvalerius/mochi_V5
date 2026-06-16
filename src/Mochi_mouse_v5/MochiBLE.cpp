@@ -3,6 +3,9 @@
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
+// Le callback di scan BLE sono statiche/globali: serve un ponte verso l'istanza.
+static MochiBLE* g_self = nullptr;
+
 // ================================================================
 // CLASSI CALLBACK
 // ================================================================
@@ -29,6 +32,18 @@ public:
         Serial.println("BLE: Device Disconnesso - Advertising riavviato");
     }
 };
+
+// Riceve i device trovati durante lo scan async.
+class MochiScanCallbacks: public BLEAdvertisedDeviceCallbacks {
+    void onResult(BLEAdvertisedDevice dev) {
+        if (g_self) g_self->reportNearby(dev);
+    }
+};
+
+// Chiamata da BLEScan al termine dello scan async.
+static void scanCompleteCB(BLEScanResults results) {
+    if (g_self) g_self->onScanComplete();
+}
 
 class MyCallbacks: public BLECharacteristicCallbacks {
     MochiState* statePtr;
@@ -65,6 +80,12 @@ public:
                 pCharacteristic->notify();
                 Serial.println("[BLE] Stato inviato al browser!");
                 return;
+            } else if (cmd == "get_nearby") {
+                String reply = g_self ? g_self->getNearbyJson() : "[]";
+                pCharacteristic->setValue(reply.c_str());
+                pCharacteristic->notify();
+                Serial.println("[BLE] Lista vicini inviata al browser!");
+                return;
             } else {
                 statePtr->applyCommand(cmd);
             }
@@ -81,6 +102,7 @@ MochiBLE::MochiBLE(MochiState* m, Adafruit_NeoPixel* led) {
     statusLed = led;
     pServer = nullptr;
     pCharacteristic = nullptr;
+    g_self = this; // Ponte per le callback statiche di scan
 
     uint32_t chipId = 0;
     for(int i=0; i<17; i=i+8) { chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i; }
@@ -119,26 +141,87 @@ void MochiBLE::begin() {
     pAdvertising->setMinPreferred(0x06);  
     pAdvertising->setMinPreferred(0x12);
     
-    pAdvertising->start(); 
+    pAdvertising->start();
     Serial.println("BLE Pronto come: " + bleName);
+
+    // --- DISCOVERY: scan async non bloccante ---
+    pBLEScan = BLEDevice::getScan();
+    pBLEScan->setAdvertisedDeviceCallbacks(new MochiScanCallbacks(), false);
+    pBLEScan->setActiveScan(true); // Active: chiede anche il nome (scan response)
+    pBLEScan->setInterval(100);
+    pBLEScan->setWindow(99);
 }
 
-void MochiBLE::scanForFriends() {
-    BLEScan* pBLEScan = BLEDevice::getScan();
-    pBLEScan->setActiveScan(true);
-    
-    BLEScanResults* foundDevices = pBLEScan->start(2, false);
-    
-    for (int i = 0; i < foundDevices->getCount(); i++) {
-        BLEAdvertisedDevice device = foundDevices->getDevice(i);
-        String name = String(device.getName().c_str());
-        if (name.startsWith("Mochi-")) {
-            Serial.print("Amico trovato: ");
-            Serial.println(name);
-            mochi->applyCommand("friend_nearby");
+// Avvia uno scan async se è passato SCAN_INTERVAL_MS e non ce n'è uno in corso.
+void MochiBLE::tickScan(unsigned long now) {
+    pruneNearby(now);
+
+    if (scanning || pBLEScan == nullptr) return;
+    if (lastScanStart != 0 && (now - lastScanStart) < SCAN_INTERVAL_MS) return;
+
+    scanning = true;
+    lastScanStart = now;
+    // start() async: ritorna subito, scanCompleteCB chiamata alla fine.
+    pBLEScan->start(SCAN_DURATION_S, scanCompleteCB, false);
+}
+
+void MochiBLE::onScanComplete() {
+    scanning = false;
+    pruneNearby(millis());
+    if (pBLEScan) pBLEScan->clearResults(); // Libera la RAM dei risultati grezzi
+}
+
+// Upsert di un device trovato nella tabella dei vicini.
+void MochiBLE::reportNearby(BLEAdvertisedDevice dev) {
+    String name = String(dev.getName().c_str());
+    if (!name.startsWith("Mochi-")) return; // Solo altri Mochi
+    if (name == bleName) return;            // Mai me stesso
+
+    unsigned long now = millis();
+    int rssi = dev.getRSSI();
+
+    // Cerca un'entry esistente con lo stesso id e aggiornala.
+    for (int i = 0; i < nearbyLen; i++) {
+        if (nearby[i].id == name) {
+            nearby[i].addr = dev.getAddress();
+            nearby[i].rssi = rssi;
+            nearby[i].lastSeen = now;
+            return;
         }
     }
-    pBLEScan->clearResults();
+
+    // Nuovo vicino: aggiungi se c'è spazio.
+    if (nearbyLen < MAX_NEARBY) {
+        nearby[nearbyLen].id = name;
+        nearby[nearbyLen].addr = dev.getAddress();
+        nearby[nearbyLen].rssi = rssi;
+        nearby[nearbyLen].lastSeen = now;
+        nearbyLen++;
+        Serial.println("[BLE] Mochi vicino: " + name + " (rssi " + String(rssi) + ")");
+    }
+}
+
+// Rimuove i vicini non più visti da NEARBY_TIMEOUT_MS (compattando l'array).
+void MochiBLE::pruneNearby(unsigned long now) {
+    int w = 0;
+    for (int i = 0; i < nearbyLen; i++) {
+        if (now - nearby[i].lastSeen <= NEARBY_TIMEOUT_MS) {
+            if (w != i) nearby[w] = nearby[i];
+            w++;
+        }
+    }
+    nearbyLen = w;
+}
+
+// Lista vicini in JSON per la companion app.
+String MochiBLE::getNearbyJson() {
+    String out = "[";
+    for (int i = 0; i < nearbyLen; i++) {
+        if (i > 0) out += ",";
+        out += "{\"id\":\"" + nearby[i].id + "\",\"rssi\":" + String(nearby[i].rssi) + "}";
+    }
+    out += "]";
+    return out;
 }
 
 bool MochiBLE::isConnected() {

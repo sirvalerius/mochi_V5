@@ -191,6 +191,17 @@ void MochiView::drawUI(MochiState &state, bool connected, float animAngle) {
   canvas->fillRect(18, 12, (int)(state.hunger*2), 3, K_BG_1);
   canvas->fillRect(18, 20, (int)(state.happy*2), 3, K_BG_2);
   
+  // Indicatore "amico vicino": due cuoricini affiancati in alto a destra
+  if (state.isFriendNearby) {
+    int hx = 232, hy = 13;
+    for (int s = 0; s < 2; s++) {
+      int ox = hx + s * 12;
+      canvas->fillCircle(ox,     hy, 2, K_HEART);
+      canvas->fillCircle(ox + 4, hy, 2, K_HEART);
+      canvas->fillTriangle(ox - 2, hy + 1, ox + 6, hy + 1, ox + 2, hy + 6, K_HEART);
+    }
+  }
+
   // Spina
   if (connected) {
     int px = 295, py = 12;

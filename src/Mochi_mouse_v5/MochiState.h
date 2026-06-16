@@ -73,6 +73,8 @@ public:
   bool isAutoClickActive = false;
   bool minigamePlayedThisSlot = false;
 
+  bool isFriendNearby = false; // Almeno un altro Mochi è nei paraggi (discovery)
+
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;
 

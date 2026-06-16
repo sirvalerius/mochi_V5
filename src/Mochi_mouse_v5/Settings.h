@@ -57,6 +57,12 @@
 #define MAX_STAT       99
 #define STAT_GAIN      8   // max points earned per successful minigame
 
+// --- SOCIAL / DISCOVERY (Nuovo!) ---
+#define SCAN_INTERVAL_MS    30000   // Ogni quanto far partire uno scan
+#define SCAN_DURATION_S     3       // Durata di ogni scan async (secondi)
+#define NEARBY_TIMEOUT_MS   90000   // Dopo quanto un vicino è considerato "sparito"
+#define MAX_NEARBY          8       // Numero massimo di vicini tracciati
+
 // --- RETE WIFI (Nuovo!) ---
 #define WIFI_SSID "Mochi_Net"
 #define WIFI_PASS "mochi123" // Password (min 8 caratteri)

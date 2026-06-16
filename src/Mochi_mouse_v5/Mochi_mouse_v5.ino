@@ -295,6 +295,10 @@ void loop() {
   bool wink = (fmod(now, 5000) < 200);
   float animAngle = now / 200.0;
 
+  // --- DISCOVERY: scan async dei Mochi vicini (non bloccante) ---
+  ble->tickScan(now);
+  mochi.isFriendNearby = (ble->nearbyCount() > 0);
+
   // Disegno a schermo
   // --- CONTROLLO AGGIORNAMENTO COLORI ---
   if (mochi.colorsUpdated) {
