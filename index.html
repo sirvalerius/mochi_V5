@@ -189,6 +189,10 @@
         </div>
     </div>
 
-    <script type="module" src="connect.js"></script>
+    <!-- Cache-buster: i browser cachano i moduli ES in modo aggressivo; il query
+         param forza il caricamento dell'ultima versione ad ogni apertura. -->
+    <script type="module">
+        import(`./connect.js?v=${Date.now()}`);
+    </script>
 </body>
 </html>
