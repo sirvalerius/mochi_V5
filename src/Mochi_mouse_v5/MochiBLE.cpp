@@ -54,7 +54,10 @@ public:
                 statePtr->saveState();
                 Serial.println("Settings salvati.");
             } else if (cmd == "get_json") {
-                pCharacteristic->setValue(statePtr->settingsBlob.c_str());
+                // Sempre con i colori reali del Mochi, così la pagina adotta lo
+                // schema colore del device appena connesso.
+                String reply = statePtr->getSettingsJson();
+                pCharacteristic->setValue(reply.c_str());
                 pCharacteristic->notify();
                 Serial.println("Settings inviati al browser.");
             } else if (cmd == "get_settings") {
@@ -82,8 +85,27 @@ public:
                 pCharacteristic->notify();
                 Serial.println("[BLE] Lista amici inviata al browser!");
                 return;
+            } else if (cmd == "get_requests") {
+                String reply = statePtr->getRequestsJson();
+                pCharacteristic->setValue(reply.c_str());
+                pCharacteristic->notify();
+                Serial.println("[BLE] Richieste di amicizia inviate al browser!");
+                return;
             } else if (cmd.startsWith("add_friend:")) {
-                statePtr->addFriend(cmd.substring(11));
+                // Non aggiunge subito: invia una RICHIESTA di amicizia via ESP-NOW.
+                // L'amicizia nasce solo quando l'altro Mochi accetta.
+                if (g_social) g_social->sendFriendRequest(cmd.substring(11));
+                return;
+            } else if (cmd.startsWith("accept_friend:")) {
+                // Accetta una richiesta in arrivo: diventiamo amici e avvisiamo
+                // l'altro Mochi (che a sua volta ci aggiungerà → amicizia mutua).
+                String id = cmd.substring(14);
+                statePtr->addFriend(id);
+                statePtr->removePendingRequest(id);
+                if (g_social) g_social->sendFriendAccept(id);
+                return;
+            } else if (cmd.startsWith("decline_friend:")) {
+                statePtr->removePendingRequest(cmd.substring(15));
                 return;
             } else if (cmd.startsWith("del_friend:")) {
                 statePtr->removeFriend(cmd.substring(11));

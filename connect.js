@@ -21,10 +21,15 @@ const versionLabel = document.getElementById('version-label');
 
 // Riferimenti Amici
 const nearbyListEl = document.getElementById('nearby-list');
+const requestsListEl = document.getElementById('requests-list');
 const friendsListEl = document.getElementById('friends-list');
 const btnRefreshSocial = document.getElementById('btn-refresh-social');
-let lastArrayRequest = null;   // 'nearby' | 'friends' (disambigua gli array vuoti)
+let lastArrayRequest = null;   // 'nearby' | 'friends' | 'requests' (disambigua gli array vuoti)
 let socialPollTimer = null;
+
+// Stato amicizia lato app
+let incomingRequests = [];     // id dei Mochi che ci hanno chiesto l'amicizia
+let sentRequests = new Set();  // id a cui abbiamo inviato una richiesta (in attesa)
 
 // Riferimenti Sidebar
 const btnSettings = document.getElementById('btn-settings');
@@ -259,7 +264,10 @@ function onDisconnected() {
 
     // Ferma il polling social e svuota le liste
     if (socialPollTimer) { clearInterval(socialPollTimer); socialPollTimer = null; }
+    incomingRequests = [];
+    sentRequests.clear();
     nearbyListEl.innerHTML = '<p class="social-empty">Nessun Mochi vicino</p>';
+    requestsListEl.innerHTML = '<p class="social-empty">Nessuna richiesta</p>';
     friendsListEl.innerHTML = '<p class="social-empty">Nessun amico</p>';
 }
 
@@ -335,6 +343,11 @@ if (btnRefreshSocial) btnRefreshSocial.onclick = pollSocial;
 // non far interleavare le notifiche).
 async function pollSocial() {
     if (!mochiCharacteristic) return;
+    // Le richieste vanno chieste prima dei vicini: così quando arriva la lista
+    // vicini `incomingRequests` è già aggiornata e i bottoni mostrano "Accetta".
+    lastArrayRequest = 'requests';
+    await sendCmd('get_requests');
+    await new Promise(r => setTimeout(r, 250));
     lastArrayRequest = 'friends';
     await sendCmd('get_friends');
     await new Promise(r => setTimeout(r, 250));
@@ -370,13 +383,50 @@ function renderNearby(arr) {
             btn.className = 'social-act del';
             btn.textContent = 'Rimuovi';
             btn.onclick = () => socialAction('del_friend:' + m.id);
+        } else if (incomingRequests.includes(m.id)) {
+            // Ci ha già chiesto l'amicizia: basta accettare.
+            btn.className = 'social-act accept';
+            btn.textContent = 'Accetta';
+            btn.onclick = () => { sentRequests.delete(m.id); socialAction('accept_friend:' + m.id); };
+        } else if (sentRequests.has(m.id)) {
+            btn.className = 'social-act pending';
+            btn.textContent = 'In attesa…';
+            btn.disabled = true;
         } else {
             btn.className = 'social-act add';
             btn.textContent = 'Aggiungi';
-            btn.onclick = () => socialAction('add_friend:' + m.id);
+            btn.onclick = () => { sentRequests.add(m.id); socialAction('add_friend:' + m.id); };
         }
         row.appendChild(btn);
         nearbyListEl.appendChild(row);
+    });
+}
+
+function renderRequests(arr) {
+    incomingRequests = arr.map(r => r.id);
+    requestsListEl.innerHTML = '';
+    if (!arr.length) {
+        requestsListEl.innerHTML = '<p class="social-empty">Nessuna richiesta</p>';
+        return;
+    }
+    arr.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'social-row';
+        row.innerHTML = `<span class="social-name">${r.id}</span>`;
+
+        const accept = document.createElement('button');
+        accept.className = 'social-act accept';
+        accept.textContent = 'Accetta';
+        accept.onclick = () => { sentRequests.delete(r.id); socialAction('accept_friend:' + r.id); };
+
+        const decline = document.createElement('button');
+        decline.className = 'social-act del';
+        decline.textContent = 'Rifiuta';
+        decline.onclick = () => socialAction('decline_friend:' + r.id);
+
+        row.appendChild(accept);
+        row.appendChild(decline);
+        requestsListEl.appendChild(row);
     });
 }
 
@@ -387,6 +437,10 @@ function renderFriends(arr) {
         return;
     }
     arr.forEach(f => {
+        // Diventato amico: non è più "in attesa" né una richiesta pendente.
+        sentRequests.delete(f.id);
+        incomingRequests = incomingRequests.filter(id => id !== f.id);
+
         const row = document.createElement('div');
         row.className = 'social-row';
         row.innerHTML = `<span class="social-name">${f.id}</span>`;
@@ -413,10 +467,19 @@ function handleNotifications(event) {
     if (receivedString.startsWith("[")) {
         try {
             const arr = JSON.parse(receivedString);
-            // I vicini hanno il campo "rssi"; gli amici no. Per gli array vuoti
-            // ci affidiamo a quale richiesta è stata appena inviata.
-            const looksNearby = arr.length > 0 ? (arr[0].rssi !== undefined) : (lastArrayRequest === 'nearby');
-            if (looksNearby) renderNearby(arr);
+            // Distinzione per contenuto: i vicini hanno "rssi", le richieste hanno
+            // "pending", gli amici solo "id". Per gli array vuoti ci affidiamo a
+            // quale richiesta è stata appena inviata (lastArrayRequest).
+            let kind;
+            if (arr.length > 0) {
+                if (arr[0].rssi !== undefined) kind = 'nearby';
+                else if (arr[0].pending !== undefined) kind = 'requests';
+                else kind = 'friends';
+            } else {
+                kind = lastArrayRequest || 'friends';
+            }
+            if (kind === 'nearby') renderNearby(arr);
+            else if (kind === 'requests') renderRequests(arr);
             else renderFriends(arr);
         } catch (error) {
             console.error("Errore parsing array social:", error);

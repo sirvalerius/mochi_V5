@@ -64,6 +64,9 @@
         .social-act { border: none; border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: bold; cursor: pointer; color: white; }
         .social-act.add { background-color: #00cec9; }
         .social-act.del { background-color: #eb4d4b; }
+        .social-act.accept { background-color: #2ecc71; }
+        .social-act.pending { background-color: #ccc; cursor: default; }
+        .social-row .social-act + .social-act { margin-left: 6px; }
         #btn-refresh-social { background-color: #a29bfe; padding: 10px; font-size: 14px; }
         .debug-output { text-align: left; background: #2d3436; color: #dfe6e9; border-radius: 12px; padding: 12px; font-size: 12px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; overflow-x: auto; margin: 8px 0; }
     </style>
@@ -128,6 +131,8 @@
         <div id="social-panel">
             <h4>Vicini</h4>
             <div id="nearby-list" class="social-list"><p class="social-empty">Nessun Mochi vicino</p></div>
+            <h4>Richieste ricevute</h4>
+            <div id="requests-list" class="social-list"><p class="social-empty">Nessuna richiesta</p></div>
             <h4>I tuoi amici</h4>
             <div id="friends-list" class="social-list"><p class="social-empty">Nessun amico</p></div>
         </div>

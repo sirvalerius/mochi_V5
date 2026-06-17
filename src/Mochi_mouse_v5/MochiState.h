@@ -79,6 +79,12 @@ public:
   String friendIds[MAX_FRIENDS]; // ID degli amici (es. "Mochi-ABCD")
   int    friendCount = 0;
 
+  // --- RICHIESTE DI AMICIZIA IN ARRIVO (runtime, non persistite) ---
+  // L'amicizia richiede una richiesta + un'accettazione: questi sono gli ID
+  // dei Mochi che ci hanno chiesto l'amicizia e attendono una risposta.
+  String pendingReqIds[MAX_FRIENDS];
+  int    pendingReqCount = 0;
+
   // --- VISITE (runtime, non persistite: un reboot riporta tutti a casa) ---
   // Il mio Mochi è in visita altrove
   bool          isAway = false;
@@ -120,6 +126,16 @@ public:
   bool   removeFriend(const String& id);
   bool   isFriend(const String& id);
   String getFriendsJson();
+
+  // --- RICHIESTE DI AMICIZIA ---
+  bool   addPendingRequest(const String& id);    // Registra una richiesta in arrivo
+  bool   removePendingRequest(const String& id); // Accettata o rifiutata
+  String getRequestsJson();
+
+  // --- IMPOSTAZIONI ---
+  // JSON dei setting con SEMPRE i colori/luminosità correnti del Mochi, così la
+  // companion app può adottare lo schema colore del device appena connesso.
+  String getSettingsJson();
 
   // --- VISITE ---
   String getVisitPayloadJson(const String& selfId); // Snapshot da spedire all'host

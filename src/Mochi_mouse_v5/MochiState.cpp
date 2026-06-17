@@ -20,6 +20,17 @@ uint16_t hexToRGB565(const char* hexStr) {
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
+// Inverso di hexToRGB565: ricostruisce una stringa "#RRGGBB" da un colore RGB565,
+// espandendo ogni canale a 8 bit (con replica dei bit alti per non perdere brillantezza).
+static String rgb565ToHex(uint16_t c) {
+    uint8_t r = (c >> 11) & 0x1F; r = (r << 3) | (r >> 2);
+    uint8_t g = (c >> 5)  & 0x3F; g = (g << 2) | (g >> 4);
+    uint8_t b =  c        & 0x1F; b = (b << 3) | (b >> 2);
+    char buf[8];
+    sprintf(buf, "#%02X%02X%02X", r, g, b);
+    return String(buf);
+}
+
 // ==========================================
 // LOGICA MEMORIA
 // ==========================================
@@ -102,6 +113,20 @@ void MochiState::applySettings() {
       }
     }
   }
+}
+
+// Restituisce il JSON dei setting garantendo SEMPRE i colori e la luminosità
+// correnti del Mochi. Su un device appena resettato il blob è "{}" e non
+// conterrebbe colori: così la companion app adotta comunque lo schema reale.
+String MochiState::getSettingsJson() {
+  StaticJsonDocument<512> doc;
+  deserializeJson(doc, settingsBlob); // se fallisce parte da un oggetto vuoto
+  doc["bgTop"]      = rgb565ToHex(bgTopColor);
+  doc["bgBottom"]   = rgb565ToHex(bgBottomColor);
+  doc["brightness"] = screenBrightness;
+  String out;
+  serializeJson(doc, out);
+  return out;
 }
 
 // ==========================================
@@ -428,6 +453,47 @@ String MochiState::getFriendsJson() {
   for (int i = 0; i < friendCount; i++) {
     if (i > 0) out += ",";
     out += "{\"id\":\"" + friendIds[i] + "\"}";
+  }
+  out += "]";
+  return out;
+}
+
+// ==========================================
+// RICHIESTE DI AMICIZIA (runtime)
+// ==========================================
+
+// Registra una richiesta in arrivo. Ignora se siamo già amici o se la richiesta
+// è già presente. Non persistita: un reboot azzera le richieste in sospeso.
+bool MochiState::addPendingRequest(const String& id) {
+  if (id.length() == 0) return false;
+  if (isFriend(id)) return false; // già amici, niente richiesta
+  for (int i = 0; i < pendingReqCount; i++) {
+    if (pendingReqIds[i] == id) return true; // già in sospeso
+  }
+  if (pendingReqCount >= MAX_FRIENDS) return false;
+  pendingReqIds[pendingReqCount++] = id;
+  Serial.println("Richiesta di amicizia da: " + id);
+  return true;
+}
+
+bool MochiState::removePendingRequest(const String& id) {
+  for (int i = 0; i < pendingReqCount; i++) {
+    if (pendingReqIds[i] == id) {
+      for (int j = i; j < pendingReqCount - 1; j++) pendingReqIds[j] = pendingReqIds[j + 1];
+      pendingReqCount--;
+      pendingReqIds[pendingReqCount] = "";
+      return true;
+    }
+  }
+  return false;
+}
+
+// Le richieste hanno il campo "pending":true così la app le distingue dagli amici.
+String MochiState::getRequestsJson() {
+  String out = "[";
+  for (int i = 0; i < pendingReqCount; i++) {
+    if (i > 0) out += ",";
+    out += "{\"id\":\"" + pendingReqIds[i] + "\",\"pending\":true}";
   }
   out += "]";
   return out;

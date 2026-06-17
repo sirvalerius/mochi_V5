@@ -7,9 +7,11 @@
 
 // Tipi di pacchetto scambiati tra Mochi via ESP-NOW.
 enum MochiPktType : uint8_t {
-    PKT_ANNOUNCE  = 0, // Broadcast periodico di presenza
-    PKT_VISIT     = 1, // Consegna dell'avatar in visita (unicast)
-    PKT_VISIT_ACK = 2  // Risposta all'host (unicast): accettato o occupato
+    PKT_ANNOUNCE     = 0, // Broadcast periodico di presenza
+    PKT_VISIT        = 1, // Consegna dell'avatar in visita (unicast)
+    PKT_VISIT_ACK    = 2, // Risposta all'host (unicast): accettato o occupato
+    PKT_FRIEND_REQ   = 3, // Richiesta di amicizia (unicast)
+    PKT_FRIEND_ACCEPT= 4  // Accettazione di una richiesta (unicast) → amicizia mutua
 };
 
 // Pacchetto ESP-NOW (max 250 byte: questo è ~226).
@@ -48,6 +50,10 @@ private:
     String        pendingHostId = "";
     unsigned long pendingSentAt = 0;
 
+    // Accettazione amicizia ricevuta via ESP-NOW: l'addFriend (scrive in NVS)
+    // viene differito al tick() del loop principale per non bloccare la callback.
+    String        inboundAcceptId = "";
+
     // --- DIAGNOSTICA ---
     unsigned long announceCount = 0; // Annunci broadcast inviati
     unsigned long recvCount = 0;     // Pacchetti ESP-NOW ricevuti
@@ -58,6 +64,8 @@ private:
     void sendAnnounce();
     void sendVisit(NearbyMochi& target);
     void sendAck(const uint8_t* mac, bool ok);
+    int  findNearbyIndex(const String& id);
+    bool sendFriendPkt(const String& id, uint8_t type);
     void ensurePeer(const uint8_t* mac);
     void reportNearby(const String& id, const uint8_t* mac, int rssi);
     void pruneNearby(unsigned long now);
@@ -69,6 +77,10 @@ public:
     void tick(unsigned long now);            // Annuncio + prune + logica visite
     void onRecv(const esp_now_recv_info_t* info, const uint8_t* data, int len);
     void onSend(int status);                 // Esito invio (dalla send callback)
+
+    // Invia una richiesta/accettazione di amicizia a un Mochi vicino (per id).
+    bool   sendFriendRequest(const String& id);
+    bool   sendFriendAccept(const String& id);
 
     int    nearbyCount() const { return nearbyLen; }
     String getNearbyJson();

@@ -121,6 +121,38 @@ void MochiNow::sendAck(const uint8_t* mac, bool ok) {
     esp_now_send(mac, (const uint8_t*)&pkt, sizeof(pkt));
 }
 
+int MochiNow::findNearbyIndex(const String& id) {
+    for (int i = 0; i < nearbyLen; i++) {
+        if (nearby[i].id == id) return i;
+    }
+    return -1;
+}
+
+// Invio unicast di un pacchetto di amicizia (richiesta o accettazione) a un
+// vicino identificato per id. Ritorna false se il Mochi non è (più) nei paraggi.
+bool MochiNow::sendFriendPkt(const String& id, uint8_t type) {
+    int idx = findNearbyIndex(id);
+    if (idx < 0) return false;
+    MochiPacket pkt = {};
+    pkt.type = type;
+    strncpy(pkt.id, selfId.c_str(), sizeof(pkt.id) - 1);
+    ensurePeer(nearby[idx].mac);
+    esp_now_send(nearby[idx].mac, (const uint8_t*)&pkt, sizeof(pkt));
+    return true;
+}
+
+bool MochiNow::sendFriendRequest(const String& id) {
+    bool ok = sendFriendPkt(id, PKT_FRIEND_REQ);
+    Serial.println("[NOW] Richiesta di amicizia a " + id + (ok ? "" : " FALLITA (non vicino)"));
+    return ok;
+}
+
+bool MochiNow::sendFriendAccept(const String& id) {
+    bool ok = sendFriendPkt(id, PKT_FRIEND_ACCEPT);
+    Serial.println("[NOW] Accettazione amicizia a " + id + (ok ? "" : " FALLITA (non vicino)"));
+    return ok;
+}
+
 // Upsert di un vicino dalla ricezione di un annuncio.
 void MochiNow::reportNearby(const String& id, const uint8_t* mac, int rssi) {
     unsigned long now = millis();
@@ -195,6 +227,19 @@ void MochiNow::onRecv(const esp_now_recv_info_t* info, const uint8_t* data, int 
                 awaitingAck = false;
             }
             break;
+
+        case PKT_FRIEND_REQ:
+            // Un altro Mochi chiede l'amicizia: la registriamo come richiesta in
+            // sospeso. Diventerà amicizia solo se l'utente la accetta.
+            reportNearby(senderId, info->src_addr, rssi); // così potremo rispondergli
+            mochi->addPendingRequest(senderId);
+            break;
+
+        case PKT_FRIEND_ACCEPT:
+            // La nostra richiesta è stata accettata: differiamo l'addFriend (NVS)
+            // al tick() del loop principale per non scrivere dalla callback WiFi.
+            inboundAcceptId = senderId;
+            break;
     }
 }
 
@@ -230,6 +275,16 @@ void MochiNow::tickVisit(unsigned long now) {
 
 void MochiNow::tick(unsigned long now) {
     if (!ready) return;
+
+    // Accettazione amicizia arrivata: aggiungiamo l'amico qui (fuori dalla
+    // callback ESP-NOW) perché addFriend scrive in NVS.
+    if (inboundAcceptId.length() > 0) {
+        mochi->addFriend(inboundAcceptId);
+        mochi->removePendingRequest(inboundAcceptId);
+        Serial.println("[NOW] Amicizia confermata con " + inboundAcceptId);
+        inboundAcceptId = "";
+    }
+
     pruneNearby(now);
     if (lastAnnounce == 0 || (now - lastAnnounce) >= ANNOUNCE_INTERVAL_MS) {
         sendAnnounce();
