@@ -514,6 +514,8 @@ String MochiState::getVisitPayloadJson(const String& selfId) {
   doc["chr"]    = statChr;
   doc["hunger"] = (int)hunger;
   doc["happy"]  = (int)happy;
+  doc["btop"]   = bgTopColor;    // colori di casa (RGB565), per il gradiente dell'ospite
+  doc["bbot"]   = bgBottomColor;
   String out;
   serializeJson(doc, out);
   return out;
@@ -543,6 +545,8 @@ bool MochiState::receiveGuest(const String& payload, unsigned long durationMs) {
   guestId  = String((const char*)(doc["id"] | ""));
   if (guestId.length() == 0) return false;
   guestAge = (AgeStage)((int)(doc["age"] | (int)ADULT));
+  guestBgTop    = (uint16_t)(doc["btop"] | (int)K_BG_TOP);
+  guestBgBottom = (uint16_t)(doc["bbot"] | (int)K_BG_BOTTOM);
   isHostingGuest = true;
   guestUntil = millis() + durationMs;
   triggerHeart();

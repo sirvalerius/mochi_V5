@@ -95,6 +95,10 @@ public:
   String        guestId = "";
   AgeStage      guestAge = ADULT;
   unsigned long guestUntil = 0;
+  // Colori "di casa" dell'ospite: in visita viene disegnato con il SUO gradiente
+  // di sfondo invece del bianco.
+  uint16_t      guestBgTop = K_BG_TOP;
+  uint16_t      guestBgBottom = K_BG_BOTTOM;
 
   String lastCommand = ""; 
   unsigned long commandFeedbackTime = 0;

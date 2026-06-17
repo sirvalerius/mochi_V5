@@ -82,6 +82,10 @@ public:
     bool   sendFriendRequest(const String& id);
     bool   sendFriendAccept(const String& id);
 
+    // DEBUG (temporaneo): forza subito una visita verso il Mochi vicino indicato,
+    // bypassando cooldown e probabilità. Ritorna false se non è nei paraggi/occupato.
+    bool   forceVisit(const String& id);
+
     int    nearbyCount() const { return nearbyLen; }
     String getNearbyJson();
     String getDebugReport();                 // Report diagnostico per la companion app

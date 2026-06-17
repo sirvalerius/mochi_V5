@@ -153,6 +153,22 @@ bool MochiNow::sendFriendAccept(const String& id) {
     return ok;
 }
 
+// DEBUG: forza una partenza in visita verso `id` se è vicino e siamo liberi.
+bool MochiNow::forceVisit(const String& id) {
+    if (mochi->isAway || mochi->isHostingGuest || awaitingAck) {
+        Serial.println("[NOW] forceVisit ignorato: occupato");
+        return false;
+    }
+    int idx = findNearbyIndex(id);
+    if (idx < 0) {
+        Serial.println("[NOW] forceVisit: " + id + " non è vicino");
+        return false;
+    }
+    Serial.println("[NOW] DEBUG forceVisit -> " + id);
+    sendVisit(nearby[idx]);
+    return true;
+}
+
 // Upsert di un vicino dalla ricezione di un annuncio.
 void MochiNow::reportNearby(const String& id, const uint8_t* mac, int rssi) {
     unsigned long now = millis();

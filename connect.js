@@ -444,6 +444,14 @@ function renderFriends(arr) {
         const row = document.createElement('div');
         row.className = 'social-row';
         row.innerHTML = `<span class="social-name">${f.id}</span>`;
+
+        // DEBUG (temporaneo): forza una visita verso questo amico (dev'essere vicino).
+        const visitBtn = document.createElement('button');
+        visitBtn.className = 'social-act visit';
+        visitBtn.textContent = '🐞 Visita';
+        visitBtn.onclick = () => sendCmd('force_visit:' + f.id);
+        row.appendChild(visitBtn);
+
         const btn = document.createElement('button');
         btn.className = 'social-act del';
         btn.textContent = 'Rimuovi';

@@ -110,6 +110,10 @@ public:
             } else if (cmd.startsWith("del_friend:")) {
                 statePtr->removeFriend(cmd.substring(11));
                 return;
+            } else if (cmd.startsWith("force_visit:")) {
+                // DEBUG (temporaneo): forza la partenza in visita verso l'amico.
+                if (g_social) g_social->forceVisit(cmd.substring(12));
+                return;
             } else if (cmd == "get_debug") {
                 String reply = g_social ? g_social->getDebugReport() : "DBG\nsocial non collegato";
                 pCharacteristic->setValue(reply.c_str());

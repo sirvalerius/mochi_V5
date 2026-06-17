@@ -30,6 +30,10 @@ void MochiView::render(MochiState &state, int yOff, float animAngle, bool wink, 
     // Il Mochi è in visita altrove: niente pet, solo il cartello "TORNO SUBITO".
     drawUI(state, connected, animAngle);
     drawVisitorSign(state);
+  } else if (state.isHostingGuest) {
+    // Sto ospitando: scena con i due Mochi che giocano insieme.
+    drawUI(state, connected, animAngle);
+    drawVisitScene(state);
   } else {
     drawUI(state, connected, animAngle);
 
@@ -41,11 +45,6 @@ void MochiView::render(MochiState &state, int yOff, float animAngle, bool wink, 
         if (state.currentAge == BABY)  { w = 70; h = 55; }
         else if (state.currentAge == ELDER) { color = K_ELDER_BODY; }
         drawAdaptiveMochi(160, 86 + yOff, w, h, color, state.currentAge, wink, state.isHeartVisible, state.isBubbleVisible, state.bubbleType);
-    }
-
-    // Ospite in visita: avatar più piccolo affiancato.
-    if (state.isHostingGuest) {
-        drawGuest(state);
     }
 
     // Pending action indicator: pulsing banner at bottom.
@@ -286,19 +285,93 @@ void MochiView::drawVisitorSign(MochiState &state) {
   canvas->print("s");
 }
 
-// Avatar dell'ospite (il Mochi di un amico in visita), affiancato più piccolo.
-void MochiView::drawGuest(MochiState &state) {
-  AgeStage st = state.guestAge;
-  uint16_t color = (st == ELDER) ? K_ELDER_BODY : K_WHITE;
-  int gx = 255, gy = 120;
+// Interpolazione lineare tra due colori RGB565 (t in [0,1]).
+uint16_t MochiView::lerp565(uint16_t a, uint16_t b, float t) {
+  int ar = (a >> 11) & 0x1F, ag = (a >> 5) & 0x3F, ab = a & 0x1F;
+  int br = (b >> 11) & 0x1F, bg = (b >> 5) & 0x3F, bb = b & 0x1F;
+  int r = ar + (int)((br - ar) * t);
+  int g = ag + (int)((bg - ag) * t);
+  int bl = ab + (int)((bb - ab) * t);
+  return (r << 11) | (g << 5) | bl;
+}
 
-  // Un eventuale ospite "uovo" lo disegniamo comunque come cucciolo.
-  drawAdaptiveMochi(gx, gy, 50, 40, color, (st == EGG ? BABY : st), false, false, false, '.');
+// Riempie un rettangolo arrotondato con un gradiente verticale (top -> bottom),
+// rispettando gli angoli tondi calcolando la corda orizzontale riga per riga.
+void MochiView::fillRoundRectGradient(int x, int y, int w, int h, int r, uint16_t top, uint16_t bottom) {
+  if (h <= 0) return;
+  if (r > w / 2) r = w / 2;
+  if (r > h / 2) r = h / 2;
+  for (int i = 0; i < h; i++) {
+    int inset = 0;
+    if (i < r) {
+      float dy = (float)(r - i);
+      inset = r - (int)(sqrtf((float)(r * r) - dy * dy) + 0.5f);
+    } else if (i >= h - r) {
+      float dy = (float)(i - (h - r) + 1);
+      inset = r - (int)(sqrtf((float)(r * r) - dy * dy) + 0.5f);
+    }
+    float ratio = (h > 1) ? (float)i / (float)(h - 1) : 0.0f;
+    float smooth = (1.0f - cosf(ratio * (float)M_PI)) / 2.0f; // morbido come lo sfondo
+    uint16_t col = lerp565(top, bottom, smooth);
+    canvas->drawFastHLine(x + inset, y + i, w - 2 * inset, col);
+  }
+}
 
+// Scena di gioco: l'host e l'ospite (col SUO gradiente) giocano insieme,
+// rimbalzando in controfase con un cuore che passa avanti e indietro.
+void MochiView::drawVisitScene(MochiState &state) {
+  unsigned long now = millis();
+  float t = now / 1000.0f;
+
+  int baseCy = 92;
+  int hostCx = 92, guestCx = 228;
+
+  // Rimbalzi in controfase (uno su, l'altro giù) → sembra che giochino.
+  int bounceH = -(int)(fabsf(sinf(t * 3.0f)) * 14.0f);
+  int bounceG = -(int)(fabsf(sinf(t * 3.0f + (float)M_PI)) * 14.0f);
+
+  // --- Host (bianco / anziano grigio) ---
+  AgeStage hs = (state.currentAge == EGG) ? BABY : state.currentAge;
+  uint16_t hostColor = (state.currentAge == ELDER) ? K_ELDER_BODY : K_WHITE;
+  drawAdaptiveMochi(hostCx, baseCy + bounceH, 84, 66, hostColor, hs,
+                    false, state.isHeartVisible, false, '.');
+
+  // --- Ospite (gradiente della sua casa) ---
+  AgeStage gs = (state.guestAge == EGG) ? BABY : state.guestAge;
+  drawAdaptiveMochi(guestCx, baseCy + bounceG, 78, 62, state.guestBgTop, gs,
+                    false, false, false, '.', true, state.guestBgBottom);
+
+  // --- Cuore/pallina che rimbalza tra i due (ping-pong su arco) ---
+  float saw = fmodf(t * 1.5f, 2.0f);          // 0..2
+  float dir = (saw < 1.0f) ? saw : (2.0f - saw); // 0..1..0
+  int ballX = hostCx + (int)((guestCx - hostCx) * dir);
+  int ballY = baseCy - 18 - (int)(fabsf(sinf(dir * (float)M_PI)) * 30.0f);
+  canvas->fillCircle(ballX - 3, ballY, 4, K_HEART);
+  canvas->fillCircle(ballX + 3, ballY, 4, K_HEART);
+  canvas->fillTriangle(ballX - 7, ballY, ballX + 7, ballY, ballX, ballY + 8, K_HEART);
+
+  // Scintille occasionali tra i due
+  if ((now / 250) % 4 == 0) {
+    int sx = 130 + (int)(random(60));
+    int sy = baseCy - 30 - (int)(random(20));
+    canvas->drawPixel(sx, sy, K_WHITE);
+    canvas->drawFastHLine(sx - 2, sy, 5, K_BG_2);
+    canvas->drawFastVLine(sx, sy - 2, 5, K_BG_2);
+  }
+
+  // Etichetta + countdown alla fine della visita.
   canvas->setTextSize(1);
   canvas->setTextColor(canvas->color565(90, 90, 90));
-  canvas->setCursor(gx - 18, gy - 34);
+  canvas->setCursor(guestCx - 24, baseCy + 40);
   canvas->print("ospite");
+
+  long rem = (state.guestUntil > now) ? (long)((state.guestUntil - now) / 1000) : 0;
+  canvas->setTextColor(K_HEART);
+  canvas->setCursor(128, 130);
+  canvas->print("GIOCANO!  ");
+  canvas->setTextColor(canvas->color565(90, 90, 90));
+  canvas->print(rem);
+  canvas->print("s");
 }
 
 void MochiView::drawEgg(int cx, int cy, float animAngle, float crackProgress) {
@@ -400,10 +473,14 @@ void MochiView::drawEyes(int cx, int cy, int spacingX, int yOffset, int rX, int 
   }
 }
 
-void MochiView::drawAdaptiveMochi(int cx, int cy, int w, int h, uint16_t bodyColor, AgeStage stage, bool wink, bool heart, bool bubble, char bType) {
-  // 1. Disegna Corpo
-  int radius = (stage == BABY) ? (h * 0.45) : (h * 0.40); 
-  canvas->fillRoundRect(cx - (w/2), cy - (h/2), w, h, radius, bodyColor);
+void MochiView::drawAdaptiveMochi(int cx, int cy, int w, int h, uint16_t bodyColor, AgeStage stage, bool wink, bool heart, bool bubble, char bType, bool gradient, uint16_t bodyColor2) {
+  // 1. Disegna Corpo (tinta unita oppure gradiente verticale, es. per l'ospite)
+  int radius = (stage == BABY) ? (h * 0.45) : (h * 0.40);
+  if (gradient) {
+    fillRoundRectGradient(cx - (w/2), cy - (h/2), w, h, radius, bodyColor, bodyColor2);
+  } else {
+    canvas->fillRoundRect(cx - (w/2), cy - (h/2), w, h, radius, bodyColor);
+  }
 
   // 2. Calcola proporzioni per gli elementi facciali
   int spacingX, yOffset, eyeRx, eyeRy;
