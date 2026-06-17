@@ -172,21 +172,10 @@ async function onConnected(name) {
     await downloadState();
 
     statusText.innerHTML = `<span class="status-dot online"></span> Connesso: ${name}`;
-	
-	await mochiCharacteristic.startNotifications();
-	mochiCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
-		const value = new TextDecoder().decode(event.target.value);
-		console.log("[BLE RECEIVE] <-", value);
-		
-		if (value.startsWith('{')) {
-			try {
-				mochiSettings = JSON.parse(value);
-				if(mochiSettings.timezone) tzSelector.value = mochiSettings.timezone;
-				console.log("updated settings from Mochi");
-			} catch (e) { console.error("JSON Parse Error", e); }
-		}
-	});
-	
+    // Le notifiche sono già attivate e gestite da handleNotifications (in
+    // connectToMochi): NON registrare un secondo listener qui, sovrascriveva
+    // mochiSettings con qualsiasi JSON in arrivo (anche le statistiche).
+
     btnConnect.style.display = "none";
     btnDisconnect.style.display = "block";
     cmdButtons.forEach(b => b.removeAttribute('disabled'));
@@ -231,8 +220,9 @@ applyBackgroundColors(savedBgTop, savedBgBottom);
 async function downloadSettings() {
     await sendCmd("get_json");
     // Aspetta un attimo che il Mochi aggiorni il valore
-    await new Promise(r => setTimeout(r, 200)); 
-    const value = await mochiCharacteristic.readValue();
+    await new Promise(r => setTimeout(r, 200));
+    const value = await readCmd();
+    if (!value) return; // connessione caduta o lettura fallita
     const jsonString = new TextDecoder().decode(value);
     mochiSettings = JSON.parse(jsonString);
     
@@ -275,13 +265,35 @@ async function disconnectMochi() {
     if (connectedDevice) connectedDevice.gatt.disconnect();
 }
 
-async function sendCmd(action) {
-    if (!mochiCharacteristic) return;
-    try {
-		// Logga esattamente cosa stiamo per mandare via BLE
-        console.log(`[BLE SEND] -> ${action}`);
-        await mochiCharacteristic.writeValue(new TextEncoder().encode(action));
-    } catch (e) { console.error("Errore invio:", e); }
+// --- CODA GATT ---
+// Web Bluetooth consente UNA sola operazione GATT alla volta: write e read
+// sovrapposte danno "GATT operation already in progress" e destabilizzano la
+// connessione. Serializziamo TUTTE le operazioni in una coda a promesse.
+let gattQueue = Promise.resolve();
+function enqueueGatt(fn) {
+    const run = gattQueue.then(fn, fn); // esegui comunque, anche dopo un errore
+    gattQueue = run.catch(() => {});    // mantieni viva la catena
+    return run;
+}
+
+function sendCmd(action) {
+    if (!mochiCharacteristic) return Promise.resolve();
+    return enqueueGatt(async () => {
+        if (!mochiCharacteristic) return;
+        try {
+            console.log(`[BLE SEND] -> ${action}`);
+            await mochiCharacteristic.writeValue(new TextEncoder().encode(action));
+        } catch (e) { console.error("Errore invio:", e); }
+    });
+}
+
+// Lettura serializzata della caratteristica (passa per la stessa coda).
+function readCmd() {
+    return enqueueGatt(async () => {
+        if (!mochiCharacteristic) return null;
+        try { return await mochiCharacteristic.readValue(); }
+        catch (e) { console.error("Errore lettura:", e); return null; }
+    });
 }
 
 async function saveAndUploadSettings() {
@@ -341,8 +353,12 @@ if (btnRefreshSocial) btnRefreshSocial.onclick = pollSocial;
 
 // Chiede al Mochi sia la lista amici che i vicini (separati nel tempo per
 // non far interleavare le notifiche).
+let socialPolling = false;
 async function pollSocial() {
     if (!mochiCharacteristic) return;
+    if (socialPolling) return; // evita che un poll si accavalli sul precedente
+    socialPolling = true;
+    try {
     // Le richieste vanno chieste prima dei vicini: così quando arriva la lista
     // vicini `incomingRequests` è già aggiornata e i bottoni mostrano "Accetta".
     lastArrayRequest = 'requests';
@@ -353,6 +369,9 @@ async function pollSocial() {
     await new Promise(r => setTimeout(r, 250));
     lastArrayRequest = 'nearby';
     await sendCmd('get_nearby');
+    } finally {
+        socialPolling = false;
+    }
 }
 
 // Invia un comando amico e poi ricarica le liste.
