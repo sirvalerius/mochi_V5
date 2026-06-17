@@ -108,11 +108,18 @@ public:
                 statePtr->removePendingRequest(cmd.substring(15));
                 return;
             } else if (cmd.startsWith("del_friend:")) {
-                statePtr->removeFriend(cmd.substring(11));
+                // Rimuove l'amico e avvisa l'altro device (unfriend mutuo).
+                String id = cmd.substring(11);
+                statePtr->removeFriend(id);
+                if (g_social) g_social->sendUnfriend(id);
                 return;
             } else if (cmd.startsWith("force_visit:")) {
                 // DEBUG (temporaneo): forza la partenza in visita verso l'amico.
                 if (g_social) g_social->forceVisit(cmd.substring(12));
+                return;
+            } else if (cmd == "force_home") {
+                // DEBUG (temporaneo): forza il rientro a casa anticipato.
+                if (g_social) g_social->forceHome();
                 return;
             } else if (cmd == "get_debug") {
                 String reply = g_social ? g_social->getDebugReport() : "DBG\nsocial non collegato";

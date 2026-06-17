@@ -11,7 +11,9 @@ enum MochiPktType : uint8_t {
     PKT_VISIT        = 1, // Consegna dell'avatar in visita (unicast)
     PKT_VISIT_ACK    = 2, // Risposta all'host (unicast): accettato o occupato
     PKT_FRIEND_REQ   = 3, // Richiesta di amicizia (unicast)
-    PKT_FRIEND_ACCEPT= 4  // Accettazione di una richiesta (unicast) → amicizia mutua
+    PKT_FRIEND_ACCEPT= 4, // Accettazione di una richiesta (unicast) → amicizia mutua
+    PKT_FRIEND_REMOVE= 5, // Rimozione amicizia (unicast) → l'altro rimuove a sua volta
+    PKT_VISIT_END    = 6  // L'ospite torna a casa in anticipo (unicast all'host)
 };
 
 // Pacchetto ESP-NOW (max 250 byte: questo è ~226).
@@ -53,6 +55,9 @@ private:
     // Accettazione amicizia ricevuta via ESP-NOW: l'addFriend (scrive in NVS)
     // viene differito al tick() del loop principale per non bloccare la callback.
     String        inboundAcceptId = "";
+    // Rimozione amicizia ricevuta da remoto: anche removeFriend scrive in NVS,
+    // quindi viene differita al tick().
+    String        inboundRemoveId = "";
 
     // --- DIAGNOSTICA ---
     unsigned long announceCount = 0; // Annunci broadcast inviati
@@ -81,10 +86,14 @@ public:
     // Invia una richiesta/accettazione di amicizia a un Mochi vicino (per id).
     bool   sendFriendRequest(const String& id);
     bool   sendFriendAccept(const String& id);
+    // Avvisa l'altro Mochi che lo abbiamo rimosso dagli amici (unfriend mutuo).
+    bool   sendUnfriend(const String& id);
 
     // DEBUG (temporaneo): forza subito una visita verso il Mochi vicino indicato,
     // bypassando cooldown e probabilità. Ritorna false se non è nei paraggi/occupato.
     bool   forceVisit(const String& id);
+    // Forza il rientro a casa anticipato (se in visita), avvisando l'host.
+    bool   forceHome();
 
     int    nearbyCount() const { return nearbyLen; }
     String getNearbyJson();

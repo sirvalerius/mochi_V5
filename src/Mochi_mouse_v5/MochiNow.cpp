@@ -153,6 +153,32 @@ bool MochiNow::sendFriendAccept(const String& id) {
     return ok;
 }
 
+bool MochiNow::sendUnfriend(const String& id) {
+    bool ok = sendFriendPkt(id, PKT_FRIEND_REMOVE);
+    Serial.println("[NOW] Notifica rimozione amicizia a " + id + (ok ? "" : " (non vicino)"));
+    return ok;
+}
+
+// Forza il rientro a casa anticipato. Se siamo in visita, avvisa l'host (così
+// smette di disegnare l'ospite) e poi torniamo a casa.
+bool MochiNow::forceHome() {
+    if (!mochi->isAway) {
+        Serial.println("[NOW] forceHome ignorato: non sono in visita");
+        return false;
+    }
+    int idx = findNearbyIndex(mochi->awayHostId);
+    if (idx >= 0) {
+        MochiPacket pkt = {};
+        pkt.type = PKT_VISIT_END;
+        strncpy(pkt.id, selfId.c_str(), sizeof(pkt.id) - 1);
+        ensurePeer(nearby[idx].mac);
+        esp_now_send(nearby[idx].mac, (const uint8_t*)&pkt, sizeof(pkt));
+    }
+    Serial.println("[NOW] DEBUG forceHome: rientro a casa");
+    mochi->returnHome();
+    return true;
+}
+
 // DEBUG: forza una partenza in visita verso `id` se è vicino e siamo liberi.
 bool MochiNow::forceVisit(const String& id) {
     if (mochi->isAway || mochi->isHostingGuest || awaitingAck) {
@@ -256,6 +282,18 @@ void MochiNow::onRecv(const esp_now_recv_info_t* info, const uint8_t* data, int 
             // al tick() del loop principale per non scrivere dalla callback WiFi.
             inboundAcceptId = senderId;
             break;
+
+        case PKT_FRIEND_REMOVE:
+            // L'altro ci ha rimosso: rimuoviamo a sua volta (NVS → differito).
+            inboundRemoveId = senderId;
+            break;
+
+        case PKT_VISIT_END:
+            // L'ospite è rientrato a casa in anticipo: smettiamo di ospitarlo.
+            if (mochi->isHostingGuest && mochi->guestId == senderId) {
+                mochi->guestLeaves();
+            }
+            break;
     }
 }
 
@@ -299,6 +337,11 @@ void MochiNow::tick(unsigned long now) {
         mochi->removePendingRequest(inboundAcceptId);
         Serial.println("[NOW] Amicizia confermata con " + inboundAcceptId);
         inboundAcceptId = "";
+    }
+    if (inboundRemoveId.length() > 0) {
+        mochi->removeFriend(inboundRemoveId);
+        Serial.println("[NOW] Amicizia rimossa da remoto: " + inboundRemoveId);
+        inboundRemoveId = "";
     }
 
     pruneNearby(now);
