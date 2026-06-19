@@ -176,7 +176,7 @@ void setup() {
   // Inizializzazione hardware (LGFX) con i pin della board rilevata
   display.configure(g_board);
   display.init();
-  display.setRotation(1);
+  display.setRotation(g_board.rotation);
   
   canvas.createSprite(display.width(), display.height());
 

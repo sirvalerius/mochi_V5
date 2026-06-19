@@ -27,6 +27,7 @@ struct BoardProfile {
   int  rst;
   int  bl;        // backlight (PWM, attivo alto su entrambe)
   bool invert;    // ST7789 vuole invert=true, JD9853 invert=false
+  int  rotation;  // LovyanGFX setRotation: 1 = landscape; +4 = mirror orizzontale
   // --- LED RGB di stato ---
   bool hasStatusLed;
   int  rgbPin;
