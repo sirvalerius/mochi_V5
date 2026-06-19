@@ -24,6 +24,16 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sudo BINDIR=/usr/local/bin sh
 
+      # Cache del core ESP32 + librerie (~centinaia di MB): evita di riscaricarli
+      # e reinstallarli a ogni push. Si invalida solo se cambiano gli step di install.
+      - name: Cache Arduino core & libraries
+        uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino15-${{ runner.os }}-${{ hashFiles('.github/workflows/compile.yml') }}
+          restore-keys: |
+            arduino15-${{ runner.os }}-
+
       - name: Install ESP32 Platform and Libraries
         run: |
           arduino-cli core update-index --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
@@ -46,13 +56,26 @@ jobs:
         run: |
           sed -i "s/\"version\": \".*\"/\"version\": \"${{ env.NEW_VERSION }}\"/" manifest.json
 
+      # Cache della build dir intermedia: gli oggetti del core (che non cambiano)
+      # vengono riusati, così si ricompila solo lo sketch. restore-keys garantisce
+      # il riuso parziale anche quando i sorgenti cambiano (cambia solo la key).
+      - name: Cache build directory
+        uses: actions/cache@v4
+        with:
+          path: ./.arduino-build
+          key: build-${{ runner.os }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            build-${{ runner.os }}-
+
       - name: Compile Firmware
         run: |
           mkdir -p ./bin
+          # --build-path fisso (cachato) per ricompilazioni incrementali.
           # Aggiunta la flag per esportare i binari uniti se supportato, altrimenti gestiamo dopo
           arduino-cli compile --fqbn esp32:esp32:esp32s3:PartitionScheme=huge_app \
             --build-property "build.usb_mode=1" \
             --build-property "compiler.cpp.extra_flags=-DMOCHI_VERSION=\"${{ env.NEW_VERSION }}\"" \
+            --build-path ./.arduino-build \
             --output-dir ./bin \
             ./src/Mochi_mouse_v5/Mochi_mouse_v5.ino
 

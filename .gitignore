@@ -7,6 +7,8 @@ bin/
 # Cartelle temporanee di Arduino
 build/
 libraries/
+.arduino-build/
+bin_check/
 
 # Cartelle di Claude
 .claude/

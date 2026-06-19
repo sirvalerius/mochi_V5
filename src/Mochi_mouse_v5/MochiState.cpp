@@ -1,4 +1,5 @@
 #include "MochiState.h"
+#include "Board.h"
 
 MochiState::MochiState() {
 }
@@ -98,7 +99,7 @@ void MochiState::applySettings() {
     // 1. Applica la Luminosità direttamente al Pin della Retroilluminazione (PIN_BL)
     if (doc.containsKey("brightness")) {
       screenBrightness = doc["brightness"];
-      analogWrite(PIN_BL, screenBrightness); // Applica fisicamente la luminosità al display!
+      analogWrite(g_board.bl, screenBrightness); // Applica fisicamente la luminosità al display!
     }
     
     // 2. Estrai i colori, convertili e avvisa che sono cambiati

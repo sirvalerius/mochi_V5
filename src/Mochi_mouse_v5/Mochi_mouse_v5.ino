@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "Settings.h"
+#include "Board.h"
 #include "DisplayDriver.h"
 #include "MochiState.h"
 #include "MochiMinigame.h"
@@ -168,7 +169,12 @@ void setup() {
   USB.begin();
   Mouse.begin();
 
-  // Inizializzazione hardware (LGFX)
+  // Rileva la variante hardware (ST7789 vs Touch JD9853) PRIMA di toccare
+  // il display: popola g_board con i pin corretti.
+  boardDetect();
+
+  // Inizializzazione hardware (LGFX) con i pin della board rilevata
+  display.configure(g_board);
   display.init();
   display.setRotation(1);
   
@@ -178,23 +184,27 @@ void setup() {
   mochi.begin();
   view = new MochiView(&canvas);
 
-  pinMode(PIN_BL, OUTPUT);
-  analogWrite(PIN_BL, mochi.screenBrightness);
+  pinMode(g_board.bl, OUTPUT);
+  analogWrite(g_board.bl, mochi.screenBrightness);
 
   pinMode(PIN_BTN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_BTN), btnISR, CHANGE);
 
-  // Inizializzazione LED Globale
-  statusLed.begin();
-  statusLed.setBrightness(50); 
-  statusLed.setPixelColor(0, statusLed.Color(0, 0, 0));
-  statusLed.show();
+  // Inizializzazione LED Globale (solo se la board lo ha: sulla variante
+  // Touch il GPIO38 e' il clock LCD, quindi il NeoPixel resta spento).
+  if (g_board.hasStatusLed) {
+    statusLed.setPin(g_board.rgbPin);
+    statusLed.begin();
+    statusLed.setBrightness(50);
+    statusLed.setPixelColor(0, statusLed.Color(0, 0, 0));
+    statusLed.show();
+  }
 
   // Inizializzazione Rete (Passiamo il puntatore al LED!)
   // webServer = new MochiServer(&mochi, &statusLed);
   // webServer->begin();
   
-  ble = new MochiBLE(&mochi, &statusLed);
+  ble = new MochiBLE(&mochi, g_board.hasStatusLed ? &statusLed : nullptr);
   ble->begin();
 
   // Discovery e visite tra Mochi ora via ESP-NOW (BLE resta solo per la app)

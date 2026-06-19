@@ -4,15 +4,11 @@
 #include <Arduino.h>
 
 // --- PIN HARDWARE (Waveshare S3 LCD) ---
-#define PIN_SCLK 40
-#define PIN_MOSI 45
-#define PIN_DC   41
-#define PIN_CS   42
-#define PIN_RST  39
-#define PIN_BL   48
-
-// --- LED RGB (Nuovo!) ---
-#define PIN_RGB       38  // Pin standard per Waveshare ESP32-S3
+// NB: i pin di display/backlight/LED RGB ora dipendono dalla variante hardware
+// (ST7789 vs Touch JD9853) e vengono scelti a runtime in Board.cpp (g_board).
+// PIN_RGB qui sotto e' solo il valore iniziale del NeoPixel globale: sulla
+// variante Touch il LED non viene mai acceso (GPIO38 e' il clock LCD).
+#define PIN_RGB       38  // Pin standard per Waveshare ESP32-S3 (variante ST7789)
 #define NUM_PIXELS     1
 
 // --- COLORI ---
