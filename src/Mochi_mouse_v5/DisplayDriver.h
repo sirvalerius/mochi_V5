@@ -16,6 +16,11 @@ public:
   // Configura bus + pannello in base alla board rilevata.
   // Va chiamata PRIMA di init(), dopo boardDetect().
   void configure(const BoardProfile& p);
+
+  // Invia gamma/power specifici del JD9853 (board touch). Va chiamata DOPO
+  // init()/setRotation(): l'init ST7789 di LovyanGFX non sblocca i comandi
+  // estesi (0xDF) ne' setta la gamma del JD9853, da cui i colori scuri.
+  void applyJD9853Tuning();
 };
 
 #endif // DISPLAY_DRIVER_H

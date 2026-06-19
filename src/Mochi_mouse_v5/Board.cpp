@@ -19,7 +19,8 @@ static const BoardProfile PROFILE_ST7789 = {
   /* invert      */ true,
   /* rotation    */ 1,
   /* hasStatusLed*/ true,
-  /* rgbPin      */ 38
+  /* rgbPin      */ 38,
+  /* jd9853Tuning*/ false
 };
 
 // --- Profilo: ESP32-S3-Touch-LCD-1.47 (JD9853 + AXS5106L) ---
@@ -36,7 +37,8 @@ static const BoardProfile PROFILE_JD9853 = {
   /* invert      */ false,
   /* rotation    */ 5,
   /* hasStatusLed*/ false,  // GPIO38 qui e' il clock LCD: nessun LED RGB
-  /* rgbPin      */ -1
+  /* rgbPin      */ -1,
+  /* jd9853Tuning*/ true
 };
 
 // Profilo attivo (default: la board storica, sovrascritto da boardDetect()).

@@ -177,6 +177,8 @@ void setup() {
   display.configure(g_board);
   display.init();
   display.setRotation(g_board.rotation);
+  // Gamma/power JD9853: corregge i colori scuri sulla board touch.
+  if (g_board.jd9853Tuning) display.applyJD9853Tuning();
   
   canvas.createSprite(display.width(), display.height());
 

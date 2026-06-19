@@ -31,6 +31,8 @@ struct BoardProfile {
   // --- LED RGB di stato ---
   bool hasStatusLed;
   int  rgbPin;
+  // --- Tuning post-init ---
+  bool jd9853Tuning; // invia gamma/power JD9853 dopo init (solo board touch)
 };
 
 // Profilo attivo, popolato da boardDetect() in setup() PRIMA di init del display.
